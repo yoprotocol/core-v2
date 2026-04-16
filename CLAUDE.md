@@ -4,7 +4,7 @@ Solidity smart contracts for the core-v2 protocol.
 
 ## Tech Stack
 
-- **Language**: Solidity 0.8.29
+- **Language**: Solidity 0.8.34
 - **Framework**: Foundry
 - **Package Manager**: Bun
 - **Task Runner**: Just
