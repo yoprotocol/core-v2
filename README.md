@@ -98,12 +98,12 @@ just deploy --rpc-url <rpc> --private-key <key>
 
 ## Foundry Profiles
 
-| Profile | Purpose | Activate |
-|---|---|---|
-| `default` | Standard dev — optimizer on, 1k fuzz runs | (default) |
-| `lite` | Fast iteration — no optimizer, 10 fuzz runs | `FOUNDRY_PROFILE=lite` |
-| `optimized` | Production — via_ir, separate output | `FOUNDRY_PROFILE=optimized` |
-| `test-optimized` | Test optimized artifacts | `FOUNDRY_PROFILE=test-optimized` |
+| Profile          | Purpose                                     | Activate                         |
+| ---------------- | ------------------------------------------- | -------------------------------- |
+| `default`        | Standard dev — optimizer on, 1k fuzz runs   | (default)                        |
+| `lite`           | Fast iteration — no optimizer, 10 fuzz runs | `FOUNDRY_PROFILE=lite`           |
+| `optimized`      | Production — via_ir, separate output        | `FOUNDRY_PROFILE=optimized`      |
+| `test-optimized` | Test optimized artifacts                    | `FOUNDRY_PROFILE=test-optimized` |
 
 ## Installing Dependencies
 

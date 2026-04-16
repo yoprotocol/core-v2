@@ -40,12 +40,12 @@ Solidity smart contracts for the core-v2 protocol.
 
 ## Foundry Profiles
 
-| Profile | Use case |
-|---|---|
-| `default` | Standard development — optimizer on, 1k fuzz runs |
-| `lite` | Fast iteration — optimizer off, 10 fuzz runs |
-| `optimized` | Production builds — via_ir enabled, separate output |
-| `test-optimized` | Test against optimized artifacts |
+| Profile          | Use case                                            |
+| ---------------- | --------------------------------------------------- |
+| `default`        | Standard development — optimizer on, 1k fuzz runs   |
+| `lite`           | Fast iteration — optimizer off, 10 fuzz runs        |
+| `optimized`      | Production builds — via_ir enabled, separate output |
+| `test-optimized` | Test against optimized artifacts                    |
 
 ## Security
 
