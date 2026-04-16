@@ -1,0 +1,26 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "avoid-low-level-calls": "off",
+    "code-complexity": ["error", 9],
+    "compiler-version": ["error", ">=0.8.29"],
+    "func-name-mixedcase": "off",
+    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "function-max-lines": "off",
+    "gas-increment-by-one": "off",
+    "gas-indexed-events": "off",
+    "gas-small-strings": "off",
+    "gas-strict-inequalities": "off",
+    "gas-struct-packing": "off",
+    "imports-order": "warn",
+    "import-path-check": "off",
+    "max-line-length": ["error", 128],
+    "max-states-count": ["warn", 20],
+    "no-console": "off",
+    "no-empty-blocks": "off",
+    "no-unused-import": "error",
+    "not-rely-on-time": "off",
+    "use-natspec": "off",
+    "var-name-mixedcase": "warn"
+  }
+}

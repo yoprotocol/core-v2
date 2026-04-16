@@ -1,0 +1,16 @@
+# directories
+broadcast/
+cache/
+coverage/
+docs/
+node_modules/
+out/
+out-*/
+
+# files
+*.md
+*.sol
+.pnp.*
+bun.lock
+package-lock.json
+pnpm-lock.yaml
