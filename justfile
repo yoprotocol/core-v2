@@ -38,7 +38,7 @@ alias i := install
 
 # Install mdformat with plugins
 @install-mdformat:
-    uv tool install mdformat \
+    uv tool install mdformat --python 3.14 \
         --with mdformat-frontmatter \
         --with mdformat-gfm
 

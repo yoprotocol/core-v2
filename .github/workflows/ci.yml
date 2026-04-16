@@ -34,13 +34,13 @@ jobs:
         uses: "extractions/setup-just@v2"
 
       - name: "Install uv"
-        uses: "astral-sh/setup-uv@v6"
+        uses: "astral-sh/setup-uv@v5"
 
       - name: "Install Node.js dependencies"
         run: "bun install"
 
       - name: "Install mdformat"
-        run: "just install-mdformat"
+        run: "uv tool install mdformat --python 3.14 --with mdformat-frontmatter --with mdformat-gfm"
 
       - name: "Run all checks"
         run: "just full-check"
