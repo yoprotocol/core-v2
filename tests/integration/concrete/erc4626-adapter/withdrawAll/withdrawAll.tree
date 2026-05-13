@@ -1,0 +1,16 @@
+WithdrawAll_ERC4626_Integration_Concrete_Test
+├── when yieldVault not allowlisted
+│  └── it should revert with VaultNotAllowed
+└── when yieldVault allowlisted
+   ├── given vault has no share position
+   │  └── it should revert with NoPosition
+   └── given vault has share position
+      ├── given vault has not approved adapter on shares
+      │  └── it should revert in the yield vault on share allowance check
+      └── given vault approved adapter on shares
+         ├── it should read live share balance
+         ├── it should call yieldVault.redeem with shares equal to live balance
+         ├── it should set owner equal to vault
+         ├── it should set receiver equal to vault
+         ├── it should transfer asset to vault
+         └── it should leave vault share balance at zero

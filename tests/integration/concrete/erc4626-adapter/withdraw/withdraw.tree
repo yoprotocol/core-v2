@@ -1,0 +1,18 @@
+Withdraw_ERC4626_Integration_Concrete_Test
+├── when assets zero
+│  └── it should revert with InvalidAmount
+└── when assets non zero
+   ├── when yieldVault not allowlisted
+   │  └── it should revert with VaultNotAllowed
+   └── when yieldVault allowlisted
+      ├── given vault has not approved adapter on shares
+      │  └── it should revert in the yield vault on share allowance check
+      └── given vault approved adapter on shares
+         ├── given assets exceeds vault position
+         │  └── it should revert in the yield vault
+         └── given assets within vault position
+            ├── it should call yieldVault.withdraw with owner equal to vault
+            ├── it should call yieldVault.withdraw with receiver equal to vault
+            ├── it should transfer asset to vault
+            ├── it should burn shares from vault
+            └── it should return non zero sharesBurned

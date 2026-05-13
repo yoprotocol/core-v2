@@ -1,0 +1,10 @@
+IsAllowed_YieldRegistry_Integration_Concrete_Test
+├── given vault never allowlisted
+│  └── it should return false
+└── given vault allowlisted
+   ├── given a different yieldVault
+   │  └── it should return false
+   └── given the same yieldVault
+      ├── it should return true
+      └── given the entry was later cleared
+         └── it should return false

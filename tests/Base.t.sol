@@ -3,20 +3,28 @@ pragma solidity 0.8.34;
 
 import { Test } from "forge-std/src/Test.sol";
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
 import { IYoApprovalRegistry } from "src/interfaces/IYoApprovalRegistry.sol";
+import { IYoERC4626Adapter } from "src/interfaces/IYoERC4626Adapter.sol";
+import { IYoERC4626VaultRegistry } from "src/interfaces/IYoERC4626VaultRegistry.sol";
 import { IYoMorphoAdapter } from "src/interfaces/IYoMorphoAdapter.sol";
 import { IYoMorphoMarketRegistry } from "src/interfaces/IYoMorphoMarketRegistry.sol";
 import { IYoSwapOracle } from "src/interfaces/IYoSwapOracle.sol";
 import { IYoSwapPairRegistry } from "src/interfaces/IYoSwapPairRegistry.sol";
 
 import { YoApprovalRegistry } from "src/registries/YoApprovalRegistry.sol";
+import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.sol";
 import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
 import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
+import { YoERC4626Adapter } from "src/adapters/erc4626/YoERC4626Adapter.sol";
 import { YoMorphoAdapter } from "src/adapters/morpho/YoMorphoAdapter.sol";
 import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
 
 import { MockERC20 } from "./mocks/MockERC20.sol";
+import { MockERC4626 } from "./mocks/MockERC4626.sol";
 import { MockMorpho } from "./mocks/MockMorpho.sol";
 import { MockOneInchRouter } from "./mocks/MockOneInchRouter.sol";
 import { MockSwapOracle } from "./mocks/MockSwapOracle.sol";
@@ -48,13 +56,16 @@ abstract contract Base_Test is Assertions, Modifiers {
     MockMorpho internal mockMorpho;
     MockOneInchRouter internal mockAggregator;
     MockSwapOracle internal mockOracle;
+    MockERC4626 internal mockYieldVault;
 
     // Yo contracts under test
     YoApprovalRegistry internal approvalRegistry;
     YoMorphoMarketRegistry internal marketRegistry;
     YoSwapPairRegistry internal pairRegistry;
+    YoERC4626VaultRegistry internal yieldVaultRegistry;
     YoMorphoAdapter internal morphoAdapter;
     YoSwapAdapter internal swapAdapter;
+    YoERC4626Adapter internal yieldAdapter;
 
     /*//////////////////////////////////////////////////////////////////////////
                                   SET-UP FUNCTION
@@ -84,15 +95,18 @@ abstract contract Base_Test is Assertions, Modifiers {
         mockMorpho = new MockMorpho();
         mockAggregator = new MockOneInchRouter();
         mockOracle = new MockSwapOracle();
+        mockYieldVault = new MockERC4626(IERC20(address(usdc)), "Mock Yield Vault", "mYV");
         vm.label(address(mockMorpho), "MockMorpho");
         vm.label(address(mockAggregator), "MockOneInchRouter");
         vm.label(address(mockOracle), "MockSwapOracle");
+        vm.label(address(mockYieldVault), "MockERC4626");
 
         // Deploy Yo contracts as the multisig owner.
         vm.startPrank(users.owner);
         approvalRegistry = new YoApprovalRegistry(users.owner);
         marketRegistry = new YoMorphoMarketRegistry(users.owner);
         pairRegistry = new YoSwapPairRegistry(users.owner);
+        yieldVaultRegistry = new YoERC4626VaultRegistry(users.owner);
         morphoAdapter = new YoMorphoAdapter(IMorpho(address(mockMorpho)), marketRegistry);
         swapAdapter = new YoSwapAdapter({
             _aggregator: address(mockAggregator),
@@ -100,12 +114,15 @@ abstract contract Base_Test is Assertions, Modifiers {
             _registry: IYoSwapPairRegistry(address(pairRegistry)),
             _maxSlippageBps: defaults.MAX_SLIPPAGE_BPS()
         });
+        yieldAdapter = new YoERC4626Adapter(yieldVaultRegistry);
         vm.stopPrank();
         vm.label(address(approvalRegistry), "YoApprovalRegistry");
         vm.label(address(marketRegistry), "YoMorphoMarketRegistry");
         vm.label(address(pairRegistry), "YoSwapPairRegistry");
+        vm.label(address(yieldVaultRegistry), "YoERC4626VaultRegistry");
         vm.label(address(morphoAdapter), "YoMorphoAdapter");
         vm.label(address(swapAdapter), "YoSwapAdapter");
+        vm.label(address(yieldAdapter), "YoERC4626Adapter");
 
         // Warp to a deterministic timestamp.
         vm.warp(defaults.FEB_1_2025());
@@ -144,5 +161,10 @@ abstract contract Base_Test is Assertions, Modifiers {
     function _setApproval(address vault, address token, address spender, uint256 max) internal {
         vm.prank(users.owner);
         approvalRegistry.setApproval(vault, token, spender, max);
+    }
+
+    function _allowYieldVault(address vault, IERC4626 yieldVault) internal {
+        vm.prank(users.owner);
+        yieldVaultRegistry.setAllowed(vault, address(yieldVault), true);
     }
 }

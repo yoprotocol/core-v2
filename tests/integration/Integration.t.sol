@@ -24,11 +24,17 @@ abstract contract Integration_Test is Base_Test {
         usdc.mint(users.vault, 1_000_000e6);
         usdt.mint(users.vault, 1_000_000e6);
 
-        // Vault pre-approves the Morpho adapter and the swap adapter so they can pull on supply/swap.
-        // Vault also authorizes the Morpho adapter to act on its behalf (needed for withdraw paths).
+        // Default yield-vault allowlist + USDC approvals.
+        _allowYieldVault(users.vault, mockYieldVault);
+
+        // Vault pre-approves all adapters so they can pull tokens / shares as needed.
         vm.startPrank(users.vault);
         usdc.approve(address(morphoAdapter), type(uint256).max);
         usdc.approve(address(swapAdapter), type(uint256).max);
+        usdc.approve(address(yieldAdapter), type(uint256).max);
+        // Share approval for withdraw paths: vault authorizes adapter on the yield vault's shares.
+        mockYieldVault.approve(address(yieldAdapter), type(uint256).max);
+        // Morpho authorization for the Morpho adapter (different mechanism: setAuthorization).
         mockMorpho.setAuthorization(address(morphoAdapter), true);
         vm.stopPrank();
 
