@@ -1,0 +1,25 @@
+SetMode_Pair_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert
+└── when caller owner
+   ├── when vault zero
+   │  └── it should revert with ZeroAddress
+   ├── when tokenIn zero
+   │  └── it should revert with ZeroAddress
+   ├── when tokenOut zero
+   │  └── it should revert with ZeroAddress
+   ├── when tokenIn equals tokenOut
+   │  └── it should revert with SameToken
+   └── when all addresses valid and distinct
+      ├── given mode ORACLE_CHECKED
+      │  ├── it should set modeOf to ORACLE_CHECKED
+      │  ├── it should make isAllowed return true
+      │  └── it should emit PairModeSet
+      ├── given mode OPERATOR_TRUSTED
+      │  ├── it should set modeOf to OPERATOR_TRUSTED
+      │  ├── it should make isAllowed return true
+      │  └── it should emit PairModeSet
+      └── given mode DISALLOWED
+         ├── it should clear the entry
+         ├── it should make isAllowed return false
+         └── it should emit PairModeSet

@@ -1,0 +1,21 @@
+SetAssetConfig_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert
+└── when caller owner
+   ├── when asset zero
+   │  └── it should revert with ZeroAsset
+   ├── when feed zero
+   │  ├── given prior entry
+   │  │  ├── it should clear the entry
+   │  │  └── it should emit AssetConfigSet with zero feed
+   │  └── given no prior entry
+   │     └── it should be a no-op emit
+   └── when feed non zero
+      ├── when heartbeat zero
+      │  └── it should revert with ZeroHeartbeat
+      ├── when asset decimals exceed cap
+      │  └── it should revert with DecimalsTooHigh
+      └── when valid
+         ├── it should cache asset and feed decimals
+         ├── it should store feed and heartbeat
+         └── it should emit AssetConfigSet

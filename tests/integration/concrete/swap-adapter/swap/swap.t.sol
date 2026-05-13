@@ -51,9 +51,7 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
     function test_RevertWhen_OracleStale() external whenCallerVault whenAmountNotZero whenPairAllowed {
         mockOracle.setStale(address(usdc), address(usdt), true);
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapOracle.StaleQuote.selector, address(usdc), address(usdt))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.StalePrice.selector, address(usdc)));
         swapAdapter.swap(address(usdc), address(usdt), amountIn, 0, _execCalldata(amountIn));
     }
 
@@ -195,9 +193,51 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         assertEq(usdc.balanceOf(users.vault), vaultUsdcBefore - amountIn, "vault USDC out");
         assertEq(usdt.balanceOf(users.vault), vaultUsdtBefore + expectedOut, "vault USDT in");
 
-        // Custody invariants — adapter ends clean even though it held funds mid-tx.
         assertZeroBalance(address(usdc), address(swapAdapter));
         assertZeroBalance(address(usdt), address(swapAdapter));
         assertZeroAllowance(address(usdc), address(swapAdapter), address(mockAggregator));
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                              OPERATOR_TRUSTED MODE
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @dev When the pair is in OPERATOR_TRUSTED mode, the adapter must skip the oracle floor
+    ///      entirely. Even with a missing oracle config (`UnknownPair`), the swap should succeed
+    ///      as long as `minOut` is satisfied post-swap.
+    function test_GivenOperatorTrusted_BypassesOracleFloor() external whenAmountNotZero {
+        // Switch USDC→USDT pair to OPERATOR_TRUSTED.
+        _allowPairTrusted(users.vault, address(usdc), address(usdt));
+        // Deliberately wipe the oracle for the pair to prove the floor isn't consulted.
+        mockOracle.setUnknown(address(usdc), address(usdt), true);
+
+        uint256 amountIn = defaults.SWAP_AMOUNT_IN();
+        uint256 expectedOut = amountIn;
+        _armAggregator(expectedOut, address(swapAdapter));
+
+        uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
+        vm.prank(users.vault);
+        uint256 amountOut = swapAdapter.swap(
+            address(usdc), address(usdt), amountIn, expectedOut, _execCalldata(amountIn)
+        );
+
+        assertEq(amountOut, expectedOut, "amountOut return");
+        assertEq(usdt.balanceOf(users.vault), vaultUsdtBefore + expectedOut, "vault USDT in");
+    }
+
+    /// @dev `minOut` is still enforced post-swap even in OPERATOR_TRUSTED mode.
+    function test_GivenOperatorTrusted_StillEnforcesMinOut() external whenAmountNotZero {
+        _allowPairTrusted(users.vault, address(usdc), address(usdt));
+        mockOracle.setUnknown(address(usdc), address(usdt), true);
+
+        uint256 amountIn = defaults.SWAP_AMOUNT_IN();
+        uint256 actualOut = amountIn / 2;
+        _armAggregator(actualOut, address(swapAdapter));
+
+        vm.prank(users.vault);
+        vm.expectRevert(
+            abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, actualOut, amountIn)
+        );
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
     }
 }

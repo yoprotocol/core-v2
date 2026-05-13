@@ -1,0 +1,12 @@
+GetPriceUSD_Integration_Concrete_Test
+├── given asset unconfigured
+│  └── it should revert with UnknownAsset
+└── given asset configured
+   ├── when feed answer non positive
+   │  └── it should revert with InvalidPrice
+   ├── when feed updated within heartbeat
+   │  └── it should return the 1e18-scaled price
+   ├── when feed staler than heartbeat
+   │  └── it should revert with StalePrice
+   └── when feed updated in future
+      └── it should revert with StalePrice

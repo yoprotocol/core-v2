@@ -1,0 +1,15 @@
+GetQuote_Integration_Concrete_Test
+├── given tokenIn unconfigured
+│  └── it should revert with UnknownPair
+├── given tokenOut unconfigured
+│  └── it should revert with UnknownPair
+└── given both configured
+   ├── given same decimals
+   │  ├── when prices equal
+   │  │  └── it should return amountIn
+   │  └── when tokenIn price is half of tokenOut price
+   │     └── it should return amountIn / 2
+   ├── given tokenIn has fewer decimals than tokenOut
+   │  └── it should scale by 10^(outDec - inDec)
+   └── given tokenIn has more decimals than tokenOut
+      └── it should scale by 1 / 10^(inDec - outDec)

@@ -14,7 +14,7 @@ import { YoApprovalRegistry } from "src/registries/YoApprovalRegistry.sol";
 import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
 import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
 import { YoMorphoAdapter } from "src/adapters/morpho/YoMorphoAdapter.sol";
-import { YoSwap1inchAdapter } from "src/adapters/swap/YoSwap1inchAdapter.sol";
+import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
 
 import { MockERC20 } from "./mocks/MockERC20.sol";
 import { MockMorpho } from "./mocks/MockMorpho.sol";
@@ -54,7 +54,7 @@ abstract contract Base_Test is Assertions, Modifiers {
     YoMorphoMarketRegistry internal marketRegistry;
     YoSwapPairRegistry internal pairRegistry;
     YoMorphoAdapter internal morphoAdapter;
-    YoSwap1inchAdapter internal swapAdapter;
+    YoSwapAdapter internal swapAdapter;
 
     /*//////////////////////////////////////////////////////////////////////////
                                   SET-UP FUNCTION
@@ -94,7 +94,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         marketRegistry = new YoMorphoMarketRegistry(users.owner);
         pairRegistry = new YoSwapPairRegistry(users.owner);
         morphoAdapter = new YoMorphoAdapter(IMorpho(address(mockMorpho)), marketRegistry);
-        swapAdapter = new YoSwap1inchAdapter({
+        swapAdapter = new YoSwapAdapter({
             _aggregator: address(mockAggregator),
             _oracle: IYoSwapOracle(address(mockOracle)),
             _registry: IYoSwapPairRegistry(address(pairRegistry)),
@@ -105,7 +105,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         vm.label(address(marketRegistry), "YoMorphoMarketRegistry");
         vm.label(address(pairRegistry), "YoSwapPairRegistry");
         vm.label(address(morphoAdapter), "YoMorphoAdapter");
-        vm.label(address(swapAdapter), "YoSwap1inchAdapter");
+        vm.label(address(swapAdapter), "YoSwapAdapter");
 
         // Warp to a deterministic timestamp.
         vm.warp(defaults.FEB_1_2025());
@@ -133,7 +133,12 @@ abstract contract Base_Test is Assertions, Modifiers {
 
     function _allowPair(address vault, address tokenIn, address tokenOut) internal {
         vm.prank(users.owner);
-        pairRegistry.setAllowed(vault, tokenIn, tokenOut, true);
+        pairRegistry.setMode(vault, tokenIn, tokenOut, IYoSwapPairRegistry.PairMode.ORACLE_CHECKED);
+    }
+
+    function _allowPairTrusted(address vault, address tokenIn, address tokenOut) internal {
+        vm.prank(users.owner);
+        pairRegistry.setMode(vault, tokenIn, tokenOut, IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED);
     }
 
     function _setApproval(address vault, address token, address spender, uint256 max) internal {

@@ -28,7 +28,7 @@ contract MockSwapOracle is IYoSwapOracle {
             revert UnknownPair(tokenIn, tokenOut);
         }
         if (_stale[tokenIn][tokenOut]) {
-            revert StaleQuote(tokenIn, tokenOut);
+            revert StalePrice(tokenIn);
         }
         return (amountIn * _q[tokenIn][tokenOut]) / 1e18;
     }

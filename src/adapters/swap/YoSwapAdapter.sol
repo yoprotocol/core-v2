@@ -1,23 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IYoSwapAdapter } from "./../../interfaces/IYoSwapAdapter.sol";
+import { IYoSwapOracle } from "./../../interfaces/IYoSwapOracle.sol";
+import { IYoSwapPairRegistry } from "./../../interfaces/IYoSwapPairRegistry.sol";
 
-import { IYoSwapAdapter } from "../../interfaces/IYoSwapAdapter.sol";
-import { IYoSwapOracle } from "../../interfaces/IYoSwapOracle.sol";
-import { IYoSwapPairRegistry } from "../../interfaces/IYoSwapPairRegistry.sol";
-
-/// @title  YoSwap1inchAdapter
-/// @notice Immutable swap adapter that brokers swaps through a single, immutable aggregator address.
-///         Generic enough for any aggregator that pulls `tokenIn` from `msg.sender` and emits
-///         `tokenOut` either to `msg.sender` or to a designated recipient encoded in the calldata.
+/// @title  YoSwapAdapter
+/// @notice Generic immutable swap adapter for **synchronous, approve-based aggregators**: 1inch v5/v6,
+///         Odos, Paraswap, KyberSwap, OpenOcean, and any other aggregator that consumes `tokenIn` via
+///         `transferFrom` after being approved, and emits `tokenOut` synchronously in the same tx.
 /// @dev    Output is verified by measuring the vault's `tokenOut` balance delta against `minOut`,
-///         which is itself constrained by an oracle floor. Routing inside `aggregatorCalldata`
-///         is operator-supplied; correctness is enforced by post-conditions, not by decoding.
-contract YoSwap1inchAdapter is ReentrancyGuard, IYoSwapAdapter {
+///         which is itself constrained by an oracle floor. Routing inside `aggregatorCalldata` is
+///         operator-supplied; correctness is enforced by post-conditions, not by decoding.
+///
+///         NOT suitable for:
+///           - Permit2-based flows (UniswapX, some 0x paths) — they do not pull via `transferFrom`.
+///           - Intent-based / async settlement (CoWswap, UniswapX, 1inch Fusion) — settlement
+///             happens in a later transaction so the same-tx balance-delta check cannot fire.
+///         Those venues need sibling adapters (`YoSwapCowAdapter`, etc.) that share `IYoSwapAdapter`.
+///
+///         Deploy one instance per target aggregator. The aggregator address lives in deployment
+///         metadata / the operations runbook, not in the contract name.
+contract YoSwapAdapter is ReentrancyGuard, IYoSwapAdapter {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -57,14 +65,21 @@ contract YoSwap1inchAdapter is ReentrancyGuard, IYoSwapAdapter {
         }
         address vault = msg.sender;
 
-        if (!registry.isAllowed(vault, tokenIn, tokenOut)) {
+        IYoSwapPairRegistry.PairMode mode = registry.modeOf(vault, tokenIn, tokenOut);
+        if (mode == IYoSwapPairRegistry.PairMode.DISALLOWED) {
             revert PairNotAllowed(tokenIn, tokenOut);
         }
 
-        uint256 oracleQuote = oracle.getQuote(tokenIn, tokenOut, amountIn);
-        uint256 floor = (oracleQuote * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
-        if (minOut < floor) {
-            revert SlippageTooLow(minOut, floor);
+        // ORACLE_CHECKED: enforce on-chain slippage floor.
+        // OPERATOR_TRUSTED: skip the oracle entirely; `minOut` is the only on-chain constraint and
+        // the cosigner is the sole defense against sandwich attacks. Use for exotic assets the
+        // multisig has explicitly opted into.
+        if (mode == IYoSwapPairRegistry.PairMode.ORACLE_CHECKED) {
+            uint256 oracleQuote = oracle.getQuote(tokenIn, tokenOut, amountIn);
+            uint256 floor = (oracleQuote * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
+            if (minOut < floor) {
+                revert SlippageTooLow(minOut, floor);
+            }
         }
 
         IERC20 inToken = IERC20(tokenIn);

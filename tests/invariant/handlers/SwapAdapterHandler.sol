@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import { Test } from "forge-std/src/Test.sol";
 
-import { YoSwap1inchAdapter } from "src/adapters/swap/YoSwap1inchAdapter.sol";
+import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
 
 import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { MockOneInchRouter } from "../../mocks/MockOneInchRouter.sol";
@@ -11,7 +11,7 @@ import { MockSwapOracle } from "../../mocks/MockSwapOracle.sol";
 import { Store } from "../stores/Store.sol";
 
 contract SwapAdapterHandler is Test {
-    YoSwap1inchAdapter internal adapter;
+    YoSwapAdapter internal adapter;
     address internal vault;
     MockERC20 internal tokenIn;
     MockERC20 internal tokenOut;
@@ -20,7 +20,7 @@ contract SwapAdapterHandler is Test {
     Store internal store;
 
     constructor(
-        YoSwap1inchAdapter _adapter,
+        YoSwapAdapter _adapter,
         address _vault,
         MockERC20 _in,
         MockERC20 _out,
