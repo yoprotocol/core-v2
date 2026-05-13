@@ -1,0 +1,9 @@
+MaxApproval_Integration_Concrete_Test
+├── given no entry set
+│  └── it should return zero
+└── given entry set
+   ├── given amount cleared back to zero
+   │  └── it should return zero
+   └── given non zero amount
+      ├── it should return the configured amount
+      └── it should return distinct amounts for distinct vaults

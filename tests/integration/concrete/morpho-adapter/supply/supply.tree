@@ -1,0 +1,26 @@
+Supply_Integration_Concrete_Test
+├── when assets zero
+│  └── it should revert with InvalidAmount
+└── when assets non zero
+   ├── when market not allowlisted for vault
+   │  └── it should revert with MarketNotAllowed
+   └── when market allowlisted
+      ├── given idToMarketParams returns zero loanToken
+      │  └── it should revert with UnknownMarket
+      └── given known market
+         ├── given vault has not approved adapter
+         │  └── it should revert on transferFrom
+         └── given vault approved adapter for at least assets
+            ├── when reentered through token transfer hook
+            │  └── it should revert with ReentrancyGuardReentrantCall
+            └── when not reentered
+               ├── given Morpho returns zero share delta
+               │  └── it should revert with NoShareDelta
+               └── given Morpho returns positive share delta
+                  ├── it should pull assets from vault
+                  ├── it should call morpho.supply with onBehalf equal to vault
+                  ├── it should call morpho.supply with empty data
+                  ├── it should reset Morpho allowance to zero
+                  ├── it should leave zero loan token in adapter
+                  ├── it should leave zero allowance to Morpho
+                  └── it should return non zero (assetsSupplied, sharesSupplied)

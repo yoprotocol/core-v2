@@ -1,0 +1,35 @@
+Swap_Integration_Concrete_Test
+├── when amountIn zero
+│  └── it should revert with InvalidAmount
+└── when amountIn non zero
+   ├── when pair not allowlisted
+   │  └── it should revert with PairNotAllowed
+   └── when pair allowlisted
+      ├── when oracle reverts UnknownPair
+      │  └── it should bubble up UnknownPair
+      ├── when oracle reverts StaleQuote
+      │  └── it should bubble up StaleQuote
+      └── when oracle returns quote
+         ├── when minOut below oracle floor
+         │  └── it should revert with SlippageTooLow
+         └── when minOut at or above oracle floor
+            ├── when vault has not approved adapter
+            │  └── it should revert on transferFrom
+            └── when vault approved adapter for at least amountIn
+               ├── when reentered through token hook
+               │  └── it should revert with ReentrancyGuardReentrantCall
+               └── when not reentered
+                  ├── when aggregator call reverts
+                  │  └── it should bubble up AggregatorCallFailed
+                  └── when aggregator call succeeds
+                     ├── given output below minOut
+                     │  └── it should revert with InsufficientOutput
+                     ├── given aggregator leaves leftover input in adapter
+                     │  └── it should revert with LeftoverInput
+                     └── given clean output
+                        ├── it should pull amountIn from vault
+                        ├── it should sweep adapter tokenOut to vault
+                        ├── it should leave vault tokenOut delta at least minOut
+                        ├── it should reset aggregator allowance to zero
+                        ├── it should leave zero tokenIn in adapter
+                        └── it should return amountOut equal to vault tokenOut delta

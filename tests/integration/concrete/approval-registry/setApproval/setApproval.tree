@@ -1,0 +1,24 @@
+SetApproval_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert
+└── when caller owner
+   ├── when vault zero
+   │  └── it should revert with ZeroAddress
+   ├── when token zero
+   │  └── it should revert with ZeroAddress
+   ├── when spender zero
+   │  └── it should revert with ZeroAddress
+   └── when all addresses non zero
+      ├── when amount zero
+      │  ├── it should clear the entry
+      │  ├── it should emit ApprovalSet with zero
+      │  └── it should make maxApproval return zero
+      └── when amount non zero
+         ├── given no prior entry
+         │  ├── it should set the entry
+         │  ├── it should emit ApprovalSet
+         │  └── it should make maxApproval return the new amount
+         └── given prior entry
+            ├── it should overwrite the prior amount
+            ├── it should emit ApprovalSet with the new amount
+            └── it should make maxApproval return the new amount

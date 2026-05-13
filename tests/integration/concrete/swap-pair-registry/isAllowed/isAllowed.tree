@@ -1,0 +1,8 @@
+IsAllowed_Pair_Integration_Concrete_Test
+├── given pair never allowlisted
+│  └── it should return false
+└── given pair allowlisted in one direction
+   ├── given the reverse direction is queried
+   │  └── it should return false
+   └── given the configured direction is queried
+      └── it should return true

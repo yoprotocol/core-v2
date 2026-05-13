@@ -1,0 +1,19 @@
+WithdrawAll_Integration_Concrete_Test
+├── when market not allowlisted for vault
+│  └── it should revert with MarketNotAllowed
+└── when market allowlisted
+   ├── given idToMarketParams returns zero loanToken
+   │  └── it should revert with UnknownMarket
+   └── given known market
+      ├── given vault has no supply position
+      │  └── it should revert with NoPosition
+      └── given vault has supply position
+         ├── given Morpho not authorized for adapter
+         │  └── it should revert in Morpho with not authorized
+         └── given Morpho authorized
+            ├── it should read live supplyShares
+            ├── it should call morpho.withdraw with shares equal to live supply
+            ├── it should set onBehalf equal to vault
+            ├── it should set receiver equal to vault
+            ├── it should transfer loan token to vault
+            └── it should leave vault supplyShares at zero

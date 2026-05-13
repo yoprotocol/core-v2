@@ -1,0 +1,20 @@
+Withdraw_Integration_Concrete_Test
+├── when assets zero
+│  └── it should revert with InvalidAmount
+└── when assets non zero
+   ├── when market not allowlisted for vault
+   │  └── it should revert with MarketNotAllowed
+   └── when market allowlisted
+      ├── given idToMarketParams returns zero loanToken
+      │  └── it should revert with UnknownMarket
+      └── given known market
+         ├── given Morpho not authorized for adapter on behalf of vault
+         │  └── it should revert in Morpho with not authorized
+         └── given Morpho authorized
+            ├── given assets exceeds vault supply position
+            │  └── it should revert in Morpho
+            └── given assets within vault position
+               ├── it should call morpho.withdraw with onBehalf equal to vault
+               ├── it should call morpho.withdraw with receiver equal to vault
+               ├── it should transfer loan token to vault
+               └── it should return non zero (assetsWithdrawn, sharesBurned)

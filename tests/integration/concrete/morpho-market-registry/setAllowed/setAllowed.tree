@@ -1,0 +1,20 @@
+SetAllowed_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert
+└── when caller owner
+   ├── when vault zero
+   │  └── it should revert with ZeroAddress
+   └── when vault non zero
+      ├── given allowed false
+      │  ├── given prior entry true
+      │  │  ├── it should clear the entry
+      │  │  └── it should emit MarketAllowed false
+      │  └── given no prior entry
+      │     ├── it should leave the entry false
+      │     └── it should emit MarketAllowed false
+      └── given allowed true
+         ├── given prior entry false
+         │  ├── it should set the entry true
+         │  └── it should emit MarketAllowed true
+         └── given prior entry true
+            └── it should be idempotent

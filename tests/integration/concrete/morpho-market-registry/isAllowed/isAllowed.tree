@@ -1,0 +1,10 @@
+IsAllowed_Market_Integration_Concrete_Test
+├── given vault never allowlisted
+│  └── it should return false
+└── given vault allowlisted
+   ├── given a different market id
+   │  └── it should return false
+   └── given the same market id
+      ├── it should return true
+      └── given the entry was later set to false
+         └── it should return false
