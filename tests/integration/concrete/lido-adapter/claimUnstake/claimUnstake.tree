@@ -1,0 +1,15 @@
+ClaimUnstake_Lido_Integration_Concrete_Test
+├── given vault does not own the requestId
+│  └── it should revert in the queue on transferFrom
+├── given vault has not setApprovalForAll on the queue
+│  └── it should revert in the queue on transferFrom
+└── given vault owns and has approved adapter
+   ├── given request not yet finalized
+   │  └── it should revert with NotFinalized
+   └── given request finalized
+      ├── it should pull NFT from vault
+      ├── it should claim ETH from queue to adapter
+      ├── it should wrap ETH to WETH
+      ├── it should forward WETH to vault
+      ├── it should burn the NFT
+      └── it should leave zero ETH and zero WETH in adapter

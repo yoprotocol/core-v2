@@ -1,0 +1,12 @@
+RequestUnstake_Lido_Integration_Concrete_Test
+├── when stETHAmount zero
+│  └── it should revert with InvalidAmount
+└── when stETHAmount non zero
+   ├── given vault has not approved adapter on stETH
+   │  └── it should revert on transferFrom
+   └── given vault approved adapter on stETH
+      ├── it should pull stETH from vault
+      ├── it should approve the withdrawal queue
+      ├── it should mint a withdrawal NFT to the vault
+      ├── it should reset queue allowance to zero
+      └── it should return the new requestId

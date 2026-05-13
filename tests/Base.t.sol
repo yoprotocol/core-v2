@@ -10,6 +10,9 @@ import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
 import { IYoApprovalRegistry } from "src/interfaces/IYoApprovalRegistry.sol";
 import { IYoERC4626Adapter } from "src/interfaces/IYoERC4626Adapter.sol";
 import { IYoERC4626VaultRegistry } from "src/interfaces/IYoERC4626VaultRegistry.sol";
+import { IStETH } from "src/interfaces/external/IStETH.sol";
+import { IWETH9 } from "src/interfaces/external/IWETH9.sol";
+import { IWithdrawalQueueERC721 } from "src/interfaces/external/IWithdrawalQueueERC721.sol";
 import { IYoMorphoAdapter } from "src/interfaces/IYoMorphoAdapter.sol";
 import { IYoMorphoMarketRegistry } from "src/interfaces/IYoMorphoMarketRegistry.sol";
 import { IYoSwapOracle } from "src/interfaces/IYoSwapOracle.sol";
@@ -20,14 +23,18 @@ import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.so
 import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
 import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
 import { YoERC4626Adapter } from "src/adapters/erc4626/YoERC4626Adapter.sol";
+import { YoLidoAdapter } from "src/adapters/lido/YoLidoAdapter.sol";
 import { YoMorphoAdapter } from "src/adapters/morpho/YoMorphoAdapter.sol";
 import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
 
 import { MockERC20 } from "./mocks/MockERC20.sol";
 import { MockERC4626 } from "./mocks/MockERC4626.sol";
+import { MockLidoWithdrawalQueue } from "./mocks/MockLidoWithdrawalQueue.sol";
 import { MockMorpho } from "./mocks/MockMorpho.sol";
 import { MockOneInchRouter } from "./mocks/MockOneInchRouter.sol";
+import { MockStETH } from "./mocks/MockStETH.sol";
 import { MockSwapOracle } from "./mocks/MockSwapOracle.sol";
+import { MockWETH9 } from "./mocks/MockWETH9.sol";
 
 import { Assertions } from "./utils/Assertions.sol";
 import { Defaults } from "./utils/Defaults.sol";
@@ -57,6 +64,9 @@ abstract contract Base_Test is Assertions, Modifiers {
     MockOneInchRouter internal mockAggregator;
     MockSwapOracle internal mockOracle;
     MockERC4626 internal mockYieldVault;
+    MockWETH9 internal mockWETH;
+    MockStETH internal mockStETH;
+    MockLidoWithdrawalQueue internal mockLidoQueue;
 
     // Yo contracts under test
     YoApprovalRegistry internal approvalRegistry;
@@ -66,6 +76,7 @@ abstract contract Base_Test is Assertions, Modifiers {
     YoMorphoAdapter internal morphoAdapter;
     YoSwapAdapter internal swapAdapter;
     YoERC4626Adapter internal yieldAdapter;
+    YoLidoAdapter internal lidoAdapter;
 
     /*//////////////////////////////////////////////////////////////////////////
                                   SET-UP FUNCTION
@@ -96,10 +107,17 @@ abstract contract Base_Test is Assertions, Modifiers {
         mockAggregator = new MockOneInchRouter();
         mockOracle = new MockSwapOracle();
         mockYieldVault = new MockERC4626(IERC20(address(usdc)), "Mock Yield Vault", "mYV");
+        mockWETH = new MockWETH9();
+        mockStETH = new MockStETH();
+        mockLidoQueue = new MockLidoWithdrawalQueue(IERC20(address(mockStETH)));
+        vm.deal(address(mockLidoQueue), 1_000 ether); // pre-fund for claim payouts in tests
         vm.label(address(mockMorpho), "MockMorpho");
         vm.label(address(mockAggregator), "MockOneInchRouter");
         vm.label(address(mockOracle), "MockSwapOracle");
         vm.label(address(mockYieldVault), "MockERC4626");
+        vm.label(address(mockWETH), "MockWETH9");
+        vm.label(address(mockStETH), "MockStETH");
+        vm.label(address(mockLidoQueue), "MockLidoWithdrawalQueue");
 
         // Deploy Yo contracts as the multisig owner.
         vm.startPrank(users.owner);
@@ -115,6 +133,12 @@ abstract contract Base_Test is Assertions, Modifiers {
             _maxSlippageBps: defaults.MAX_SLIPPAGE_BPS()
         });
         yieldAdapter = new YoERC4626Adapter(yieldVaultRegistry);
+        lidoAdapter = new YoLidoAdapter({
+            _stETH: IStETH(address(mockStETH)),
+            _queue: IWithdrawalQueueERC721(address(mockLidoQueue)),
+            _weth: IWETH9(address(mockWETH)),
+            _referral: address(0)
+        });
         vm.stopPrank();
         vm.label(address(approvalRegistry), "YoApprovalRegistry");
         vm.label(address(marketRegistry), "YoMorphoMarketRegistry");
@@ -123,6 +147,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         vm.label(address(morphoAdapter), "YoMorphoAdapter");
         vm.label(address(swapAdapter), "YoSwapAdapter");
         vm.label(address(yieldAdapter), "YoERC4626Adapter");
+        vm.label(address(lidoAdapter), "YoLidoAdapter");
 
         // Warp to a deterministic timestamp.
         vm.warp(defaults.FEB_1_2025());

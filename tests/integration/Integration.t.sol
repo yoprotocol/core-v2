@@ -36,6 +36,11 @@ abstract contract Integration_Test is Base_Test {
         mockYieldVault.approve(address(yieldAdapter), type(uint256).max);
         // Morpho authorization for the Morpho adapter (different mechanism: setAuthorization).
         mockMorpho.setAuthorization(address(morphoAdapter), true);
+        // Lido adapter: vault approves WETH (stake), stETH (unstake request), and the withdrawal
+        // queue NFT (claim).
+        mockWETH.approve(address(lidoAdapter), type(uint256).max);
+        mockStETH.approve(address(lidoAdapter), type(uint256).max);
+        mockLidoQueue.setApprovalForAll(address(lidoAdapter), true);
         vm.stopPrank();
 
         // Pre-fund the aggregator router so it can deliver `tokenOut` on swap.

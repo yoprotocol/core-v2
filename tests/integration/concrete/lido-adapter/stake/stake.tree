@@ -1,0 +1,13 @@
+Stake_Lido_Integration_Concrete_Test
+├── when wethAmount zero
+│  └── it should revert with InvalidAmount
+└── when wethAmount non zero
+   ├── given vault has not approved adapter on WETH
+   │  └── it should revert on transferFrom
+   └── given vault approved adapter on WETH
+      ├── it should pull WETH from vault
+      ├── it should unwrap WETH to ETH
+      ├── it should submit ETH to Lido
+      ├── it should forward stETH to vault using transferShares
+      ├── it should leave zero ETH WETH and stETH-shares in adapter
+      └── it should return non zero stETHReceived
