@@ -10,13 +10,13 @@ Default config: 1_000 fuzz runs (per `foundry.toml`); CI runs 10_000.
 
 ## Invariants tracked
 
-| Invariant | Where | Why |
-|---|---|---|
-| `morphoAdapter` holds zero `loanToken` | `Invariant_Test.invariant_MorphoAdapter_HoldsZeroBalance` | Custody invariant — adapter must never retain user funds across tx boundaries. |
-| `swapAdapter` holds zero `tokenIn`/`tokenOut` | `Invariant_Test.invariant_SwapAdapter_HoldsZeroBalance` | Same. |
-| `morphoAdapter` has zero allowance to Morpho | `invariant_MorphoAdapter_ZeroAllowance` | Adapter must reset allowance to zero after every supply. |
-| `swapAdapter` has zero allowance to aggregator | `invariant_SwapAdapter_ZeroAllowance` | Same. |
-| Adapter authorization on Morpho remains intact | `invariant_AuthorizationStillIntact` | Authorization is granted in setUp; nothing in the handlers should revoke it. |
+| Invariant                                      | Where                                                     | Why                                                                            |
+| ---------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `morphoAdapter` holds zero `loanToken`         | `Invariant_Test.invariant_MorphoAdapter_HoldsZeroBalance` | Custody invariant — adapter must never retain user funds across tx boundaries. |
+| `swapAdapter` holds zero `tokenIn`/`tokenOut`  | `Invariant_Test.invariant_SwapAdapter_HoldsZeroBalance`   | Same.                                                                          |
+| `morphoAdapter` has zero allowance to Morpho   | `invariant_MorphoAdapter_ZeroAllowance`                   | Adapter must reset allowance to zero after every supply.                       |
+| `swapAdapter` has zero allowance to aggregator | `invariant_SwapAdapter_ZeroAllowance`                     | Same.                                                                          |
+| Adapter authorization on Morpho remains intact | `invariant_AuthorizationStillIntact`                      | Authorization is granted in setUp; nothing in the handlers should revoke it.   |
 
 ## Adding a new invariant
 

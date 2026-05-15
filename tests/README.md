@@ -44,13 +44,13 @@ Add `bulloak check` to CI to catch tests drifting from their trees.
 
 ### Naming conventions
 
-| File | Naming |
-|---|---|
-| Tree | `<function>.tree` (camelCase) |
-| Test | `<function>.t.sol` |
-| Test contract | `<Function>_<Suite>_<Kind>_Test` e.g. `SetApproval_Integration_Concrete_Test` |
-| Test method | `test_<Outcome><Branch>` e.g. `test_RevertWhen_CallerNotOwner`, `test_GivenNoPriorEntry_SetsAndEmits` |
-| Modifier | `when<Condition>` (mutable preconditions) or `given<Condition>` (state preconditions) |
+| File          | Naming                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------- |
+| Tree          | `<function>.tree` (camelCase)                                                                         |
+| Test          | `<function>.t.sol`                                                                                    |
+| Test contract | `<Function>_<Suite>_<Kind>_Test` e.g. `SetApproval_Integration_Concrete_Test`                         |
+| Test method   | `test_<Outcome><Branch>` e.g. `test_RevertWhen_CallerNotOwner`, `test_GivenNoPriorEntry_SetsAndEmits` |
+| Modifier      | `when<Condition>` (mutable preconditions) or `given<Condition>` (state preconditions)                 |
 
 ## Suite layout
 

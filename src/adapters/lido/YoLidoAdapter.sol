@@ -78,6 +78,7 @@ contract YoLidoAdapter is ReentrancyGuard, IYoLidoAdapter {
         if (leftoverWeth != 0) {
             revert LeftoverBalance(address(weth), leftoverWeth);
         }
+        // `transferShares` above is exact-in-shares; this guard is paranoia, not load-bearing.
         uint256 leftoverShares = stETH.sharesOf(address(this));
         if (leftoverShares != 0) {
             revert LeftoverShares(leftoverShares);
@@ -113,6 +114,16 @@ contract YoLidoAdapter is ReentrancyGuard, IYoLidoAdapter {
         requestId = ids[0];
 
         stETHToken.forceApprove(address(withdrawalQueue), 0);
+
+        // The queue pulled `received` (a balance amount) via `transferFrom`, which converts to
+        // shares via floor division. The 1-2 wei share residual documented by Lido is swept to
+        // the vault via the share-exact `transferShares` so nothing dusts in the adapter.
+        uint256 dustShares = stETH.sharesOf(address(this));
+        if (dustShares != 0) {
+            stETH.transferShares(vault, dustShares);
+        }
+
+        // Strict post-condition: adapter is clean.
         uint256 leftoverShares = stETH.sharesOf(address(this));
         if (leftoverShares != 0) {
             revert LeftoverShares(leftoverShares);
