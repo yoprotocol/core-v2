@@ -60,12 +60,7 @@ contract UpdateSharePriceIntegrationConcreteTest is YoOracleBase_Test {
         uint256 expectedDiffBps = (diff * BPS_DENOMINATOR) / p1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                IYoOracle.PriceChangeTooBig.selector,
-                users.vault,
-                tooHigh,
-                p1,
-                expectedDiffBps,
-                uint256(maxChangeBps)
+                IYoOracle.PriceChangeTooBig.selector, users.vault, tooHigh, p1, expectedDiffBps, uint256(maxChangeBps)
             )
         );
         oracle.updateSharePrice(users.vault, tooHigh);

@@ -32,14 +32,7 @@ contract YoERC4626Adapter is ReentrancyGuard, IYoERC4626Adapter {
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IYoERC4626Adapter
-    function deposit(
-        IERC4626 yieldVault,
-        uint256 assets
-    )
-        external
-        nonReentrant
-        returns (uint256 sharesReceived)
-    {
+    function deposit(IERC4626 yieldVault, uint256 assets) external nonReentrant returns (uint256 sharesReceived) {
         if (assets == 0) {
             revert InvalidAmount();
         }
@@ -75,14 +68,7 @@ contract YoERC4626Adapter is ReentrancyGuard, IYoERC4626Adapter {
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IYoERC4626Adapter
-    function withdraw(
-        IERC4626 yieldVault,
-        uint256 assets
-    )
-        external
-        nonReentrant
-        returns (uint256 sharesBurned)
-    {
+    function withdraw(IERC4626 yieldVault, uint256 assets) external nonReentrant returns (uint256 sharesBurned) {
         if (assets == 0) {
             revert InvalidAmount();
         }
@@ -93,13 +79,7 @@ contract YoERC4626Adapter is ReentrancyGuard, IYoERC4626Adapter {
     }
 
     /// @inheritdoc IYoERC4626Adapter
-    function withdrawAll(
-        IERC4626 yieldVault
-    )
-        external
-        nonReentrant
-        returns (uint256 assetsReceived)
-    {
+    function withdrawAll(IERC4626 yieldVault) external nonReentrant returns (uint256 assetsReceived) {
         address vault = _authorize(yieldVault);
 
         uint256 shares = yieldVault.balanceOf(vault);

@@ -17,7 +17,11 @@ interface IYoOracle {
     error NotUpdater();
     error InvalidConfig();
     error PriceChangeTooBig(
-        address vault, uint256 newPrice, uint256 anchorPrice, uint256 diffBps, uint256 maxChangeBps
+        address vault,
+        uint256 newPrice,
+        uint256 anchorPrice,
+        uint256 diffBps,
+        uint256 maxChangeBps
     );
 
     event UpdaterChanged(address indexed oldUpdater, address indexed newUpdater);

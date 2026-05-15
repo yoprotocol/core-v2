@@ -8,17 +8,13 @@ import { ChainlinkOracleBase_Test } from "../ChainlinkOracleBase.t.sol";
 contract GetQuoteIntegrationConcreteTest is ChainlinkOracleBase_Test {
     function test_RevertGiven_TokenInUnconfigured() external {
         _configureWithPrice(address(usdt), 1e8);
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapOracle.UnknownPair.selector, address(usdc), address(usdt))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.UnknownPair.selector, address(usdc), address(usdt)));
         oracle.getQuote(address(usdc), address(usdt), 1e6);
     }
 
     function test_RevertGiven_TokenOutUnconfigured() external {
         _configureWithPrice(address(usdc), 1e8);
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapOracle.UnknownPair.selector, address(usdc), address(usdt))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.UnknownPair.selector, address(usdc), address(usdt)));
         oracle.getQuote(address(usdc), address(usdt), 1e6);
     }
 
@@ -30,7 +26,7 @@ contract GetQuoteIntegrationConcreteTest is ChainlinkOracleBase_Test {
 
     function test_GivenSameDecimals_TokenInHalfPrice_ReturnsHalfAmount() external {
         _configureWithPrice(address(usdc), 0.5e8); // $0.50
-        _configureWithPrice(address(usdt), 1e8);   // $1.00
+        _configureWithPrice(address(usdt), 1e8); // $1.00
         assertEq(oracle.getQuote(address(usdc), address(usdt), 100e6), 50e6);
     }
 

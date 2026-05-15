@@ -27,8 +27,7 @@ contract LidoFork_Test is Fork_Test {
 
     IWETH9 internal constant WETH = IWETH9(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
     IStETH internal constant STETH = IStETH(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    IWithdrawalQueueERC721 internal constant QUEUE =
-        IWithdrawalQueueERC721(0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1);
+    IWithdrawalQueueERC721 internal constant QUEUE = IWithdrawalQueueERC721(0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1);
 
     uint256 internal constant STAKE_AMOUNT = 10 ether;
 
@@ -39,16 +38,11 @@ contract LidoFork_Test is Fork_Test {
 
         _deployStack(IERC20(address(WETH)), "Yo WETH Vault", "yoWETH");
 
-        adapter = new YoLidoAdapter({
-            _stETH: STETH,
-            _queue: QUEUE,
-            _weth: WETH,
-            _referral: address(0)
-        });
+        adapter = new YoLidoAdapter({ _stETH: STETH, _queue: QUEUE, _weth: WETH, _referral: address(0) });
         vm.label(address(adapter), "YoLidoAdapter");
 
         // Fund the vault with WETH directly: ETH → WETH wrap.
-        vm.deal(address(this), 1_000 ether);
+        vm.deal(address(this), 1000 ether);
         WETH.deposit{ value: STAKE_AMOUNT * 2 }();
         IERC20(address(WETH)).transfer(address(yoVault), STAKE_AMOUNT * 2);
 
@@ -57,9 +51,8 @@ contract LidoFork_Test is Fork_Test {
         _vaultApprove(IERC20(address(STETH)), address(adapter), type(uint256).max);
 
         // Vault grants the adapter approval-for-all on the withdrawal NFT (claim path).
-        bytes memory setApprovalAll = abi.encodeWithSelector(
-            bytes4(keccak256("setApprovalForAll(address,bool)")), address(adapter), true
-        );
+        bytes memory setApprovalAll =
+            abi.encodeWithSelector(bytes4(keccak256("setApprovalForAll(address,bool)")), address(adapter), true);
         _opManage(address(QUEUE), setApprovalAll);
     }
 
@@ -70,11 +63,7 @@ contract LidoFork_Test is Fork_Test {
         bytes memory stakeCall = abi.encodeCall(YoLidoAdapter.stake, (STAKE_AMOUNT));
         _opManage(address(adapter), stakeCall);
 
-        assertEq(
-            IERC20(address(WETH)).balanceOf(address(yoVault)),
-            wethBefore - STAKE_AMOUNT,
-            "WETH pulled"
-        );
+        assertEq(IERC20(address(WETH)).balanceOf(address(yoVault)), wethBefore - STAKE_AMOUNT, "WETH pulled");
         // stETH is a rebasing 1:1 token at submission; allow ±1 wei of share-math rounding.
         uint256 stETHDelta = STETH.balanceOf(address(yoVault)) - stETHBefore;
         uint256 diff = stETHDelta > STAKE_AMOUNT ? stETHDelta - STAKE_AMOUNT : STAKE_AMOUNT - stETHDelta;
@@ -121,9 +110,8 @@ contract LidoFork_Test is Fork_Test {
         _opManage(address(adapter), abi.encodeCall(YoLidoAdapter.stake, (STAKE_AMOUNT)));
 
         // 2. Request unstake.
-        bytes memory unstakeRet = _opManage(
-            address(adapter), abi.encodeCall(YoLidoAdapter.requestUnstake, (STAKE_AMOUNT))
-        );
+        bytes memory unstakeRet =
+            _opManage(address(adapter), abi.encodeCall(YoLidoAdapter.requestUnstake, (STAKE_AMOUNT)));
         uint256 requestId = abi.decode(unstakeRet, (uint256));
 
         // 3. Simulate Lido finalization.
@@ -147,9 +135,7 @@ contract LidoFork_Test is Fork_Test {
 
         assertGt(wethReceived, 0, "claim delivered WETH");
         assertEq(
-            IERC20(address(WETH)).balanceOf(address(yoVault)),
-            wethBefore + wethReceived,
-            "vault WETH delta == claim"
+            IERC20(address(WETH)).balanceOf(address(yoVault)), wethBefore + wethReceived, "vault WETH delta == claim"
         );
         // The NFT is burned by claimWithdrawal — `ownerOf(requestId)` reverts after a successful claim.
         vm.expectRevert();

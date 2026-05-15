@@ -123,9 +123,7 @@ contract FeesIntegrationConcreteTest is YoVaultBase_Test {
         yoVault.requestRedeem(aliceSharesAfterDeposit, users.alice, users.alice);
 
         assertEq(yoVault.balanceOf(users.alice), 0);
-        assertEq(
-            usdc.balanceOf(users.alice), aliceAssetsAfterDeposit + (aliceSharesAfterDeposit - redeemFeeAmount)
-        );
+        assertEq(usdc.balanceOf(users.alice), aliceAssetsAfterDeposit + (aliceSharesAfterDeposit - redeemFeeAmount));
         assertEq(usdc.balanceOf(recipient), recipientBefore + depositFeeAmount + redeemFeeAmount);
     }
 

@@ -26,12 +26,5 @@ interface IYoApprovalRegistry {
                                        VIEWS
     //////////////////////////////////////////////////////////////////////////*/
 
-    function maxApproval(
-        address vault,
-        address token,
-        address spender
-    )
-        external
-        view
-        returns (uint256 maxAmount);
+    function maxApproval(address vault, address token, address spender) external view returns (uint256 maxAmount);
 }

@@ -12,7 +12,13 @@ contract MockStETH is ERC20 {
     constructor() ERC20("Liquid staked Ether", "stETH") { }
 
     /// @notice Stake ETH for stETH (1:1 in this mock).
-    function submit(address /* referral */ ) external payable returns (uint256 sharesMinted) {
+    function submit(
+        address /* referral */
+    )
+        external
+        payable
+        returns (uint256 sharesMinted)
+    {
         if (msg.value == 0) {
             revert ZeroDeposit();
         }

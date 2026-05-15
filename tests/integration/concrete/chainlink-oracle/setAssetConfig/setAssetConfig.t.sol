@@ -64,7 +64,7 @@ contract SetAssetConfigIntegrationConcreteTest is ChainlinkOracleBase_Test {
         YoChainlinkOracle.AssetConfig memory cfg = oracle.config(address(usdc));
         assertEq(cfg.feed, address(usdcFeed));
         assertEq(cfg.heartbeat, 1 hours);
-        assertEq(cfg.assetDecimals, 6);  // USDC
-        assertEq(cfg.feedDecimals, 8);   // Chainlink USD
+        assertEq(cfg.assetDecimals, 6); // USDC
+        assertEq(cfg.feedDecimals, 8); // Chainlink USD
     }
 }

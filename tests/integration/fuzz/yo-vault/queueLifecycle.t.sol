@@ -7,12 +7,7 @@ contract QueueLifecycle_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
     /// @dev Async queue invariants for partial fulfill:
     ///        - totalPendingAssets decreases by exactly `fulfillAssets`
     ///        - per-user pending decreases by exactly `(fulfillShares, fulfillAssets)`
-    function testFuzz_PartialFulfill_DecreasesPendingExactly(
-        uint256 deposit,
-        uint256 fulfillShares
-    )
-        external
-    {
+    function testFuzz_PartialFulfill_DecreasesPendingExactly(uint256 deposit, uint256 fulfillShares) external {
         deposit = bound(deposit, 100, 500_000e6);
 
         vm.prank(users.alice);
@@ -47,12 +42,7 @@ contract QueueLifecycle_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
     }
 
     /// @dev cancelRedeem returns escrowed shares to the receiver exactly.
-    function testFuzz_PartialCancel_ReturnsSharesExactly(
-        uint256 deposit,
-        uint256 cancelShares
-    )
-        external
-    {
+    function testFuzz_PartialCancel_ReturnsSharesExactly(uint256 deposit, uint256 cancelShares) external {
         deposit = bound(deposit, 100, 500_000e6);
 
         vm.prank(users.alice);
@@ -73,10 +63,6 @@ contract QueueLifecycle_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
         vm.prank(users.owner);
         yoVault.cancelRedeem(users.alice, cancelShares, cancelAssets);
 
-        assertEq(
-            yoVault.balanceOf(users.alice),
-            aliceSharesBefore + cancelShares,
-            "alice gets shares back"
-        );
+        assertEq(yoVault.balanceOf(users.alice), aliceSharesBefore + cancelShares, "alice gets shares back");
     }
 }

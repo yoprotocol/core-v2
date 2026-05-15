@@ -33,18 +33,14 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
     function test_RevertWhen_PairNotAllowed() external whenCallerVault whenAmountNotZero {
         // USDT -> USDC is not allowlisted (only the forward direction is).
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapAdapter.PairNotAllowed.selector, address(usdt), address(usdc))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.PairNotAllowed.selector, address(usdt), address(usdc)));
         swapAdapter.swap(address(usdt), address(usdc), amountIn, 0, _execCalldata(amountIn));
     }
 
     function test_RevertWhen_OracleUnknownPair() external whenCallerVault whenAmountNotZero whenPairAllowed {
         mockOracle.setUnknown(address(usdc), address(usdt), true);
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapOracle.UnknownPair.selector, address(usdc), address(usdt))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.UnknownPair.selector, address(usdc), address(usdt)));
         swapAdapter.swap(address(usdc), address(usdt), amountIn, 0, _execCalldata(amountIn));
     }
 
@@ -64,13 +60,11 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
     {
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
         // Oracle returns 1:1, slippage cap is 50 bps. Floor = amountIn * (10000 - 50) / 10000.
-        uint256 floor = (amountIn * (defaults.BPS_DENOMINATOR() - defaults.MAX_SLIPPAGE_BPS()))
-            / defaults.BPS_DENOMINATOR();
+        uint256 floor =
+            (amountIn * (defaults.BPS_DENOMINATOR() - defaults.MAX_SLIPPAGE_BPS())) / defaults.BPS_DENOMINATOR();
         uint256 minOutBelowFloor = floor - 1;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapAdapter.SlippageTooLow.selector, minOutBelowFloor, floor)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.SlippageTooLow.selector, minOutBelowFloor, floor));
         swapAdapter.swap(address(usdc), address(usdt), amountIn, minOutBelowFloor, _execCalldata(amountIn));
     }
 
@@ -99,14 +93,13 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         _allowPair(users.vault, address(rent), address(usdt));
         mockOracle.setQuote(address(rent), address(usdt), defaults.ORACLE_QUOTE_1_TO_1());
 
-        rent.mint(users.vault, 1_000e6);
+        rent.mint(users.vault, 1000e6);
         vm.prank(users.vault);
         rent.approve(address(swapAdapter), type(uint256).max);
 
         uint256 amountIn = 100e6;
-        bytes memory payload = abi.encodeCall(
-            IYoSwapAdapter.swap, (address(rent), address(usdt), 1, 0, _execCalldata(1))
-        );
+        bytes memory payload =
+            abi.encodeCall(IYoSwapAdapter.swap, (address(rent), address(usdt), 1, 0, _execCalldata(1)));
         rent.arm(address(swapAdapter), payload);
 
         vm.prank(users.vault);
@@ -141,9 +134,7 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         uint256 actualOut = amountIn / 2;
         _armAggregator(actualOut, address(swapAdapter));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, actualOut, amountIn)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, actualOut, amountIn));
         swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
     }
 
@@ -160,9 +151,7 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
         _armAggregator(amountIn, address(swapAdapter));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapAdapter.LeftoverInput.selector, address(usdc), amountIn)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.LeftoverInput.selector, address(usdc), amountIn));
         swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
     }
 
@@ -185,9 +174,8 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         uint256 vaultUsdcBefore = usdc.balanceOf(users.vault);
         uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
 
-        uint256 amountOut = swapAdapter.swap(
-            address(usdc), address(usdt), amountIn, expectedOut, _execCalldata(amountIn)
-        );
+        uint256 amountOut =
+            swapAdapter.swap(address(usdc), address(usdt), amountIn, expectedOut, _execCalldata(amountIn));
 
         assertEq(amountOut, expectedOut, "amountOut return");
         assertEq(usdc.balanceOf(users.vault), vaultUsdcBefore - amountIn, "vault USDC out");
@@ -217,9 +205,8 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
 
         uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
         vm.prank(users.vault);
-        uint256 amountOut = swapAdapter.swap(
-            address(usdc), address(usdt), amountIn, expectedOut, _execCalldata(amountIn)
-        );
+        uint256 amountOut =
+            swapAdapter.swap(address(usdc), address(usdt), amountIn, expectedOut, _execCalldata(amountIn));
 
         assertEq(amountOut, expectedOut, "amountOut return");
         assertEq(usdt.balanceOf(users.vault), vaultUsdtBefore + expectedOut, "vault USDT in");
@@ -235,9 +222,7 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         _armAggregator(actualOut, address(swapAdapter));
 
         vm.prank(users.vault);
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, actualOut, amountIn)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, actualOut, amountIn));
         swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
     }
 }

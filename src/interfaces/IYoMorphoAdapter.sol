@@ -13,23 +13,9 @@ interface IYoMorphoAdapter {
     error LeftoverBalance(address token, uint256 amount);
     error LeftoverAllowance(address token, uint256 amount);
 
-    function supply(
-        Id marketId,
-        uint256 assets
-    )
-        external
-        returns (uint256 assetsSupplied, uint256 sharesSupplied);
+    function supply(Id marketId, uint256 assets) external returns (uint256 assetsSupplied, uint256 sharesSupplied);
 
-    function withdraw(
-        Id marketId,
-        uint256 assets
-    )
-        external
-        returns (uint256 assetsWithdrawn, uint256 sharesBurned);
+    function withdraw(Id marketId, uint256 assets) external returns (uint256 assetsWithdrawn, uint256 sharesBurned);
 
-    function withdrawAll(
-        Id marketId
-    )
-        external
-        returns (uint256 assetsWithdrawn, uint256 sharesBurned);
+    function withdrawAll(Id marketId) external returns (uint256 assetsWithdrawn, uint256 sharesBurned);
 }

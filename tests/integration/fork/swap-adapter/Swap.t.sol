@@ -4,7 +4,6 @@ pragma solidity 0.8.34;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
-import { IYoSwapAdapter } from "src/interfaces/IYoSwapAdapter.sol";
 import { IYoSwapOracle } from "src/interfaces/IYoSwapOracle.sol";
 import { IYoSwapPairRegistry } from "src/interfaces/IYoSwapPairRegistry.sol";
 
@@ -58,16 +57,10 @@ contract SwapFork_Test is Fork_Test {
         // Both directions allowlisted in OPERATOR_TRUSTED mode.
         vm.startPrank(users.owner);
         pairRegistry.setMode(
-            address(yoVault),
-            address(USDC),
-            address(WETH),
-            IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED
+            address(yoVault), address(USDC), address(WETH), IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED
         );
         pairRegistry.setMode(
-            address(yoVault),
-            address(WETH),
-            address(USDC),
-            IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED
+            address(yoVault), address(WETH), address(USDC), IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED
         );
         vm.stopPrank();
 
@@ -94,9 +87,8 @@ contract SwapFork_Test is Fork_Test {
         );
 
         // minOut = 1 wei (just enforces "got something"); operator's slippage policy lives off-chain.
-        bytes memory swapCall = abi.encodeCall(
-            YoSwapAdapter.swap, (address(USDC), address(WETH), DEPOSIT, 1, routerCall)
-        );
+        bytes memory swapCall =
+            abi.encodeCall(YoSwapAdapter.swap, (address(USDC), address(WETH), DEPOSIT, 1, routerCall));
         _opManage(address(adapter), swapCall);
 
         assertGt(WETH.balanceOf(address(yoVault)) - wethBefore, 0, "vault received WETH");
@@ -124,9 +116,8 @@ contract SwapFork_Test is Fork_Test {
                 sqrtPriceLimitX96: 0
             })
         );
-        bytes memory leg1Swap = abi.encodeCall(
-            YoSwapAdapter.swap, (address(USDC), address(WETH), DEPOSIT, 1, leg1Router)
-        );
+        bytes memory leg1Swap =
+            abi.encodeCall(YoSwapAdapter.swap, (address(USDC), address(WETH), DEPOSIT, 1, leg1Router));
         _opManage(address(adapter), leg1Swap);
 
         uint256 wethAfter = WETH.balanceOf(address(yoVault));
@@ -148,9 +139,8 @@ contract SwapFork_Test is Fork_Test {
                 sqrtPriceLimitX96: 0
             })
         );
-        bytes memory leg2Swap = abi.encodeCall(
-            YoSwapAdapter.swap, (address(WETH), address(USDC), wethAfter, 1, leg2Router)
-        );
+        bytes memory leg2Swap =
+            abi.encodeCall(YoSwapAdapter.swap, (address(WETH), address(USDC), wethAfter, 1, leg2Router));
         _opManage(address(adapter), leg2Swap);
 
         // After 2× 5bps fees + AMM slippage, vault USDC ≈ (1 - 2·5bps) · DEPOSIT.

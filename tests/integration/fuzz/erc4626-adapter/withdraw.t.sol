@@ -21,11 +21,7 @@ contract Withdraw_ERC4626Adapter_Integration_Fuzz_Test is Integration_Test {
 
         // 1:1 mock: shares burned == assets withdrawn.
         assertEq(sharesBurned, withdrawAssets, "1:1 share burn");
-        assertEq(
-            mockYieldVault.balanceOf(users.vault),
-            sharesBefore - sharesBurned,
-            "share balance delta"
-        );
+        assertEq(mockYieldVault.balanceOf(users.vault), sharesBefore - sharesBurned, "share balance delta");
         assertEq(usdc.balanceOf(users.vault), vaultUsdcBefore + withdrawAssets, "USDC delivered");
         assertZeroBalance(address(usdc), address(yieldAdapter));
     }

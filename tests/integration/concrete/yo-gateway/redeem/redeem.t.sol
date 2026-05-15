@@ -7,7 +7,7 @@ import { Errors } from "src/libraries/Errors.sol";
 import { YoGatewayBase_Test } from "../YoGatewayBase.t.sol";
 
 contract RedeemIntegrationConcreteTest is YoGatewayBase_Test {
-    uint256 internal constant ASSETS = 1_000e6;
+    uint256 internal constant ASSETS = 1000e6;
     uint32 internal constant PARTNER_ID = 42;
 
     function _seedShares() internal returns (uint256 shares) {
@@ -62,9 +62,7 @@ contract RedeemIntegrationConcreteTest is YoGatewayBase_Test {
         uint256 expected = mockVault.previewRedeem(shares);
 
         vm.prank(users.alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.Gateway__InsufficientAssetsOut.selector, expected, expected + 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.Gateway__InsufficientAssetsOut.selector, expected, expected + 1));
         gateway.redeem(address(mockVault), shares, expected + 1, users.alice, PARTNER_ID);
     }
 }

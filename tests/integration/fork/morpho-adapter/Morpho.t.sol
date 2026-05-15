@@ -20,14 +20,15 @@ interface IMorphoExtended is IMorpho {
 ///         flow asserts that `withdrawAll` closes the position and returns USDC. Round-trip is
 ///         lossless (within 1 wei of Morpho's per-share rounding).
 contract MorphoFork_Test is Fork_Test {
-    // ── Pinned Base mainnet block ────────────────────────────────────────────
+    // ── Pinned Base mainnet block
+    // ────────────────────────────────────────────
     uint256 internal constant BASE_BLOCK = 0;
 
-    // ── Real Base addresses ──────────────────────────────────────────────────
+    // ── Real Base addresses
+    // ──────────────────────────────────────────────────
     IERC20 internal constant USDC = IERC20(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
     address internal constant WETH = 0x4200000000000000000000000000000000000006;
-    IMorphoExtended internal constant MORPHO =
-        IMorphoExtended(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
+    IMorphoExtended internal constant MORPHO = IMorphoExtended(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
     /// @dev Adaptive Curve IRM on Base. Enabled at Morpho deploy time; never removed.
     address internal constant ADAPTIVE_CURVE_IRM = 0x46415998764C29aB2a25CbeA6254146D50D22687;
     /// @dev Standard 86% LLTV (enabled).

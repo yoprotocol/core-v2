@@ -42,7 +42,10 @@ contract SetModePairIntegrationConcreteTest is Integration_Test {
 
         vm.expectEmit(true, true, true, true, address(pairRegistry));
         emit IYoSwapPairRegistry.PairModeSet(
-            users.vault, TOKEN_IN, TOKEN_OUT, IYoSwapPairRegistry.PairMode.ORACLE_CHECKED
+            users.vault,
+            TOKEN_IN,
+            TOKEN_OUT,
+            IYoSwapPairRegistry.PairMode.ORACLE_CHECKED
         );
 
         pairRegistry.setMode(users.vault, TOKEN_IN, TOKEN_OUT, IYoSwapPairRegistry.PairMode.ORACLE_CHECKED);
@@ -57,7 +60,10 @@ contract SetModePairIntegrationConcreteTest is Integration_Test {
     function test_GivenOperatorTrusted_SetsAndEmits() external whenCallerOwner whenVaultNotZero {
         vm.expectEmit(true, true, true, true, address(pairRegistry));
         emit IYoSwapPairRegistry.PairModeSet(
-            users.vault, TOKEN_IN, TOKEN_OUT, IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED
+            users.vault,
+            TOKEN_IN,
+            TOKEN_OUT,
+            IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED
         );
 
         pairRegistry.setMode(users.vault, TOKEN_IN, TOKEN_OUT, IYoSwapPairRegistry.PairMode.OPERATOR_TRUSTED);
@@ -74,9 +80,7 @@ contract SetModePairIntegrationConcreteTest is Integration_Test {
         assertTrue(pairRegistry.isAllowed(users.vault, TOKEN_IN, TOKEN_OUT));
 
         vm.expectEmit(true, true, true, true, address(pairRegistry));
-        emit IYoSwapPairRegistry.PairModeSet(
-            users.vault, TOKEN_IN, TOKEN_OUT, IYoSwapPairRegistry.PairMode.DISALLOWED
-        );
+        emit IYoSwapPairRegistry.PairModeSet(users.vault, TOKEN_IN, TOKEN_OUT, IYoSwapPairRegistry.PairMode.DISALLOWED);
 
         pairRegistry.setMode(users.vault, TOKEN_IN, TOKEN_OUT, IYoSwapPairRegistry.PairMode.DISALLOWED);
         assertFalse(pairRegistry.isAllowed(users.vault, TOKEN_IN, TOKEN_OUT));

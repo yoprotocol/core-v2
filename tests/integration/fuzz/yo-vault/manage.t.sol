@@ -68,9 +68,7 @@ contract Manage_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
             }
         } else {
             vm.prank(users.operator);
-            vm.expectRevert(
-                abi.encodeWithSelector(Errors.TargetMethodNotAuthorized.selector, targets[nGranted], sel)
-            );
+            vm.expectRevert(abi.encodeWithSelector(Errors.TargetMethodNotAuthorized.selector, targets[nGranted], sel));
             yoVault.manage(targets, data, values);
             // No leg observed a state change.
             for (uint256 i; i < N; ++i) {

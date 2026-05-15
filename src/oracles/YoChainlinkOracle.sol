@@ -118,15 +118,7 @@ contract YoChainlinkOracle is Ownable2Step, IYoSwapOracle {
     }
 
     /// @inheritdoc IYoSwapOracle
-    function getQuote(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    )
-        external
-        view
-        returns (uint256 amountOut)
-    {
+    function getQuote(address tokenIn, address tokenOut, uint256 amountIn) external view returns (uint256 amountOut) {
         AssetConfig memory cfgIn = _configs[tokenIn];
         AssetConfig memory cfgOut = _configs[tokenOut];
         if (cfgIn.feed == address(0) || cfgOut.feed == address(0)) {

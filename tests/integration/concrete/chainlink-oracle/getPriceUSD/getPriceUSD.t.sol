@@ -31,7 +31,7 @@ contract GetPriceUSDIntegrationConcreteTest is ChainlinkOracleBase_Test {
         usdcFeed.setPrice(1e8);
         assertEq(oracle.getPriceUSD(address(usdc)), 1e18);
 
-        usdcFeed.setPrice(123_456789);
+        usdcFeed.setPrice(123_456_789);
         assertEq(oracle.getPriceUSD(address(usdc)), 1_234_567_890_000_000_000);
     }
 

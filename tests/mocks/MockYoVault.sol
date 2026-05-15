@@ -8,9 +8,7 @@ import { MockERC4626 } from "./MockERC4626.sol";
 /// @notice Minimal `IYoVault`-shaped mock for `YoGateway` tests. Standard ERC-4626 surface plus a
 ///         synchronous `requestRedeem` that always settles instantly and returns the asset amount.
 contract MockYoVault is MockERC4626 {
-    constructor(IERC20 asset_, string memory name_, string memory symbol_)
-        MockERC4626(asset_, name_, symbol_)
-    { }
+    constructor(IERC20 asset_, string memory name_, string memory symbol_) MockERC4626(asset_, name_, symbol_) { }
 
     /// @dev Synchronous redeem matching the YoVault `requestRedeem` ABI. Always instant — returns
     ///      the asset amount delivered to `receiver`.

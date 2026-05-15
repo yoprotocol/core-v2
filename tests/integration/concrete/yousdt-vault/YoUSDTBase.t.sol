@@ -37,9 +37,8 @@ abstract contract YoUSDTBase_Test is Integration_Test {
         // Deploy yoUSDT (USDC stand-in as the asset for tests; yoUSDT in prod targets USDT but the
         // mechanics are asset-agnostic and our mock USDC has the same 6 decimals).
         yoUSDT impl = new yoUSDT();
-        bytes memory initData = abi.encodeCall(
-            YoVault.initialize, (IERC20(address(usdc)), users.owner, "Yo USDT Vault", "yoUSDT")
-        );
+        bytes memory initData =
+            abi.encodeCall(YoVault.initialize, (IERC20(address(usdc)), users.owner, "Yo USDT Vault", "yoUSDT"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         vault = yoUSDT(payable(address(proxy)));
         vm.label(address(impl), "yoUSDTImpl");

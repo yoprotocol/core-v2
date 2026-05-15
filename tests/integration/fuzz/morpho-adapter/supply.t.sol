@@ -25,9 +25,7 @@ contract Supply_Integration_Fuzz_Test is Integration_Test {
         assertGt(sharesSupplied, 0, "non-zero shares");
         assertEq(usdc.balanceOf(users.vault), vaultBalBefore - assets, "vault USDC delta");
         assertEq(
-            mockMorpho.position(m, users.vault).supplyShares,
-            sharesBefore + assets,
-            "share delta == assets (1:1 mock)"
+            mockMorpho.position(m, users.vault).supplyShares, sharesBefore + assets, "share delta == assets (1:1 mock)"
         );
         assertZeroBalance(address(usdc), address(morphoAdapter));
         assertZeroAllowance(address(usdc), address(morphoAdapter), address(mockMorpho));

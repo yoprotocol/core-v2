@@ -27,30 +27,16 @@ interface IYoERC4626Adapter {
     /// @notice Deposit `assets` of the yield-vault's underlying token into `yieldVault` on behalf of
     ///         the calling vault.
     /// @dev    Requires the calling vault to have approved the adapter on the underlying token.
-    function deposit(
-        IERC4626 yieldVault,
-        uint256 assets
-    )
-        external
-        returns (uint256 sharesReceived);
+    function deposit(IERC4626 yieldVault, uint256 assets) external returns (uint256 sharesReceived);
 
     /// @notice Withdraw `assets` of the underlying token from `yieldVault` to the calling vault.
     /// @dev    Calls `yieldVault.withdraw(assets, vault, vault)`. Requires the calling vault to have
     ///         approved the adapter on the SHARE token (the yield vault itself, which is ERC-20).
-    function withdraw(
-        IERC4626 yieldVault,
-        uint256 assets
-    )
-        external
-        returns (uint256 sharesBurned);
+    function withdraw(IERC4626 yieldVault, uint256 assets) external returns (uint256 sharesBurned);
 
     /// @notice Redeem the calling vault's full share position from `yieldVault`.
     /// @dev    Reads `yieldVault.balanceOf(vault)` live; cannot be spoofed by the caller. Requires
     ///         the calling vault to have approved the adapter on the SHARE token, same as
     ///         `withdraw`.
-    function withdrawAll(
-        IERC4626 yieldVault
-    )
-        external
-        returns (uint256 assetsReceived);
+    function withdrawAll(IERC4626 yieldVault) external returns (uint256 assetsReceived);
 }

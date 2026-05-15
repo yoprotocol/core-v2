@@ -8,7 +8,7 @@ import { YoUSDTBase_Test } from "../YoUSDTBase.t.sol";
 contract DepositIntegrationConcreteTest is YoUSDTBase_Test {
     using Math for uint256;
 
-    uint256 internal constant DEPOSIT_AMOUNT = 1_000e6;
+    uint256 internal constant DEPOSIT_AMOUNT = 1000e6;
 
     function test_WhenDepositNoFees_RelaysNinetyFivePercent() external {
         uint256 expectedRelay = DEPOSIT_AMOUNT.mulDiv(RELAY_PERCENTAGE, DENOMINATOR, Math.Rounding.Floor);

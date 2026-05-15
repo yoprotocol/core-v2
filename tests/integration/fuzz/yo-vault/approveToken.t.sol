@@ -36,9 +36,7 @@ contract ApproveToken_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
         amount = bound(amount, 0, type(uint128).max);
 
         vm.prank(users.operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoVault.SpenderNotAllowed.selector, address(usdc), spender)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoVault.SpenderNotAllowed.selector, address(usdc), spender));
         yoVault.approveToken(address(usdc), spender, amount);
     }
 

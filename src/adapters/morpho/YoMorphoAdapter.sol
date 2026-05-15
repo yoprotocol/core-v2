@@ -5,7 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import { Id, IMorpho, MarketParams, Position } from "../../interfaces/IMorpho.sol";
+import { Id, IMorpho, MarketParams } from "../../interfaces/IMorpho.sol";
 import { IYoMorphoAdapter } from "../../interfaces/IYoMorphoAdapter.sol";
 import { IYoMorphoMarketRegistry } from "../../interfaces/IYoMorphoMarketRegistry.sol";
 
@@ -102,13 +102,7 @@ contract YoMorphoAdapter is ReentrancyGuard, IYoMorphoAdapter {
     }
 
     /// @inheritdoc IYoMorphoAdapter
-    function withdrawAll(
-        Id marketId
-    )
-        external
-        nonReentrant
-        returns (uint256 assetsWithdrawn, uint256 sharesBurned)
-    {
+    function withdrawAll(Id marketId) external nonReentrant returns (uint256 assetsWithdrawn, uint256 sharesBurned) {
         address vault = msg.sender;
         if (!registry.isAllowed(vault, marketId)) {
             revert MarketNotAllowed(marketId);

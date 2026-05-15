@@ -23,11 +23,7 @@ contract Withdraw_Integration_Fuzz_Test is Integration_Test {
 
         assertEq(withdrawn, toWithdraw, "assetsWithdrawn");
         assertEq(usdc.balanceOf(users.vault), vaultBalBefore + toWithdraw, "vault USDC delta");
-        assertEq(
-            mockMorpho.position(m, users.vault).supplyShares,
-            sharesBefore - toWithdraw,
-            "share burn (1:1 mock)"
-        );
+        assertEq(mockMorpho.position(m, users.vault).supplyShares, sharesBefore - toWithdraw, "share burn (1:1 mock)");
         assertZeroBalance(address(usdc), address(morphoAdapter));
     }
 }

@@ -2,8 +2,9 @@
 pragma solidity 0.8.34;
 
 /// @notice Subset of Lido's `WithdrawalQueueERC721` interface used by `YoLidoAdapter`.
-/// @dev    Source of truth: https://github.com/lidofinance/lido-dao/blob/master/contracts/0.8.9/WithdrawalQueueERC721.sol
-///         Combines the queue methods we need (`requestWithdrawals`, `claimWithdrawal`) with the
+/// @dev    Source of truth:
+/// https://github.com/lidofinance/lido-dao/blob/master/contracts/0.8.9/WithdrawalQueueERC721.sol Combines the queue
+/// methods we need (`requestWithdrawals`, `claimWithdrawal`) with the
 ///         minimal ERC-721 surface (`ownerOf`, `transferFrom`, `setApprovalForAll`).
 interface IWithdrawalQueueERC721 {
     /// @notice Submit one or more withdrawal requests. Pulls `sum(amounts)` stETH from `msg.sender`

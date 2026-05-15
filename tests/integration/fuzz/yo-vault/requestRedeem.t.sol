@@ -46,23 +46,14 @@ contract RequestRedeem_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
         (uint256 pendingAssets, uint256 pendingShares) = yoVault.pendingRedeemRequest(users.alice);
         assertEq(pendingShares, shares, "pending shares == redeemed");
         assertGt(pendingAssets, 0, "pending assets > 0");
-        assertEq(
-            yoVault.totalPendingAssets(),
-            totalPendingBefore + pendingAssets,
-            "totalPending delta"
-        );
+        assertEq(yoVault.totalPendingAssets(), totalPendingBefore + pendingAssets, "totalPending delta");
         // previewRedeem with fee=0 returns the share amount directly.
         assertEq(pendingAssets, expectedAssetsWithFee);
     }
 
     /// @dev Revert ordering: ZeroReceiver beats SharesAmountZero beats NotSharesOwner beats
     ///      InsufficientShares. Each fuzz input lands on exactly one revert by construction.
-    function testFuzz_RequestRedeem_RevertOrdering(
-        uint256 deposit,
-        uint8 violationKind
-    )
-        external
-    {
+    function testFuzz_RequestRedeem_RevertOrdering(uint256 deposit, uint8 violationKind) external {
         deposit = bound(deposit, 1, 500_000e6);
         violationKind = uint8(bound(uint256(violationKind), 0, 3));
 

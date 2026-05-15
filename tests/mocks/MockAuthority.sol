@@ -12,15 +12,7 @@ contract MockAuthority is IAuthority {
         _allowed[user][target][sig] = allowed;
     }
 
-    function canCall(
-        address user,
-        address target,
-        bytes4 functionSig
-    )
-        external
-        view
-        returns (bool)
-    {
+    function canCall(address user, address target, bytes4 functionSig) external view returns (bool) {
         return _allowed[user][target][functionSig];
     }
 }

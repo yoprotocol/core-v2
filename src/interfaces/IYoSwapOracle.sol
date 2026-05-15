@@ -15,12 +15,5 @@ interface IYoSwapOracle {
 
     /// @notice Quote `amountIn` of `tokenIn` in units of `tokenOut` at the oracle's fair price.
     /// @dev    MUST fail closed on stale or missing inputs.
-    function getQuote(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    )
-        external
-        view
-        returns (uint256 amountOut);
+    function getQuote(address tokenIn, address tokenOut, uint256 amountIn) external view returns (uint256 amountOut);
 }

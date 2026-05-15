@@ -27,15 +27,13 @@ contract ManageIntegrationConcreteTest is YoVaultBase_Test {
         bytes memory data = abi.encodeCall(IERC20.transfer, (users.eve, 0));
         vm.prank(users.operator);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.TargetMethodNotAuthorized.selector, address(usdc), TRANSFER_SELECTOR
-            )
+            abi.encodeWithSelector(Errors.TargetMethodNotAuthorized.selector, address(usdc), TRANSFER_SELECTOR)
         );
         yoVault.manage(address(usdc), data, 0);
     }
 
     function test_GivenTargetSelectorGranted_ForwardsAndReturns() external {
-        usdc.mint(address(yoVault), 1_000e6);
+        usdc.mint(address(yoVault), 1000e6);
         _authorize(users.operator, address(usdc), TRANSFER_SELECTOR);
 
         uint256 amount = 100e6;
@@ -45,7 +43,7 @@ contract ManageIntegrationConcreteTest is YoVaultBase_Test {
         bytes memory ret = yoVault.manage(address(usdc), data, 0);
 
         assertEq(usdc.balanceOf(users.eve), amount, "eve received");
-        assertEq(usdc.balanceOf(address(yoVault)), 1_000e6 - amount, "vault drained");
+        assertEq(usdc.balanceOf(address(yoVault)), 1000e6 - amount, "vault drained");
         assertEq(abi.decode(ret, (bool)), true, "transfer return");
     }
 
@@ -97,9 +95,7 @@ contract ManageIntegrationConcreteTest is YoVaultBase_Test {
         data[1] = abi.encodeWithSelector(TARGET_SELECTOR, uint256(2));
 
         vm.prank(users.operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.TargetMethodNotAuthorized.selector, address(t1), TARGET_SELECTOR)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.TargetMethodNotAuthorized.selector, address(t1), TARGET_SELECTOR));
         yoVault.manage(targets, data, values);
     }
 

@@ -37,11 +37,7 @@ contract TransferFrom_YoToken_Integration_Fuzz_Test is YoTokenBase_Test {
         vm.prank(users.bob);
         token.transferFrom(users.owner, users.alice, amount);
 
-        assertEq(
-            token.allowance(users.owner, users.bob),
-            grant - amount,
-            "allowance decremented exactly"
-        );
+        assertEq(token.allowance(users.owner, users.bob), grant - amount, "allowance decremented exactly");
         assertEq(token.balanceOf(users.alice), amount);
     }
 

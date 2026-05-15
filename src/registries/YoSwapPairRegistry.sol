@@ -21,15 +21,7 @@ contract YoSwapPairRegistry is Ownable2Step, IYoSwapPairRegistry {
     }
 
     /// @inheritdoc IYoSwapPairRegistry
-    function setMode(
-        address vault,
-        address tokenIn,
-        address tokenOut,
-        PairMode mode
-    )
-        external
-        onlyOwner
-    {
+    function setMode(address vault, address tokenIn, address tokenOut, PairMode mode) external onlyOwner {
         if (vault == address(0) || tokenIn == address(0) || tokenOut == address(0)) {
             revert ZeroAddress();
         }

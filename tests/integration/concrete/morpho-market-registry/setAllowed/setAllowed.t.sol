@@ -22,11 +22,7 @@ contract SetAllowed_MarketRegistry_Integration_Concrete_Test is Integration_Test
         marketRegistry.setAllowed(address(0), m, true);
     }
 
-    function test_GivenAllowedFalse_GivenPriorEntryTrue_ClearsAndEmits()
-        external
-        whenCallerOwner
-        whenVaultNotZero
-    {
+    function test_GivenAllowedFalse_GivenPriorEntryTrue_ClearsAndEmits() external whenCallerOwner whenVaultNotZero {
         Id m = defaults.MARKET_B();
         marketRegistry.setAllowed(users.vault, m, true);
         assertTrue(marketRegistry.isAllowed(users.vault, m));
@@ -38,11 +34,7 @@ contract SetAllowed_MarketRegistry_Integration_Concrete_Test is Integration_Test
         assertFalse(marketRegistry.isAllowed(users.vault, m));
     }
 
-    function test_GivenAllowedFalse_GivenNoPriorEntry_LeavesFalseAndEmits()
-        external
-        whenCallerOwner
-        whenVaultNotZero
-    {
+    function test_GivenAllowedFalse_GivenNoPriorEntry_LeavesFalseAndEmits() external whenCallerOwner whenVaultNotZero {
         Id m = defaults.MARKET_NULL();
         assertFalse(marketRegistry.isAllowed(users.vault, m));
 
@@ -53,11 +45,7 @@ contract SetAllowed_MarketRegistry_Integration_Concrete_Test is Integration_Test
         assertFalse(marketRegistry.isAllowed(users.vault, m));
     }
 
-    function test_GivenAllowedTrue_GivenPriorEntryFalse_SetsAndEmits()
-        external
-        whenCallerOwner
-        whenVaultNotZero
-    {
+    function test_GivenAllowedTrue_GivenPriorEntryFalse_SetsAndEmits() external whenCallerOwner whenVaultNotZero {
         Id m = defaults.MARKET_B();
         assertFalse(marketRegistry.isAllowed(users.vault, m));
 

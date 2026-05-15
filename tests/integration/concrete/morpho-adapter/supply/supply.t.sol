@@ -41,11 +41,7 @@ contract Supply_Integration_Concrete_Test is Integration_Test {
         morphoAdapter.supply(m, amount);
     }
 
-    function test_RevertGiven_VaultHasNotApprovedAdapter()
-        external
-        whenAmountNotZero
-        whenMarketAllowed
-    {
+    function test_RevertGiven_VaultHasNotApprovedAdapter() external whenAmountNotZero whenMarketAllowed {
         // Revoke the default approval that Integration_Test.setUp() granted.
         vm.prank(users.vault);
         usdc.approve(address(morphoAdapter), 0);
@@ -66,7 +62,7 @@ contract Supply_Integration_Concrete_Test is Integration_Test {
         _setupMarket(m, address(rent));
         _allowMarket(users.vault, m);
 
-        rent.mint(users.vault, 1_000e6);
+        rent.mint(users.vault, 1000e6);
         vm.prank(users.vault);
         rent.approve(address(morphoAdapter), type(uint256).max);
 

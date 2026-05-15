@@ -105,8 +105,7 @@ contract Invariant_Test is Base_Test {
 
     function invariant_AuthorizationStillIntact() external view {
         assertTrue(
-            mockMorpho.isAuthorized(users.vault, address(morphoAdapter)),
-            "adapter authorization revoked unexpectedly"
+            mockMorpho.isAuthorized(users.vault, address(morphoAdapter)), "adapter authorization revoked unexpectedly"
         );
     }
 }

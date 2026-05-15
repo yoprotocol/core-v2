@@ -54,9 +54,8 @@ abstract contract YoVaultBase_Test is Integration_Test {
 
         // Deploy implementation + proxy. OZ 5.6 requires atomic init via the proxy constructor.
         YoVaultHarness impl = new YoVaultHarness();
-        bytes memory initData = abi.encodeCall(
-            YoVault.initialize, (IERC20(address(usdc)), users.owner, "Yo USDC Vault", "yoUSDC")
-        );
+        bytes memory initData =
+            abi.encodeCall(YoVault.initialize, (IERC20(address(usdc)), users.owner, "Yo USDC Vault", "yoUSDC"));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         yoVault = YoVaultHarness(payable(address(proxy)));
         vm.label(address(impl), "YoVaultImpl");

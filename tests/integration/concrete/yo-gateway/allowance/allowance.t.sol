@@ -16,8 +16,7 @@ contract AllowanceIntegrationConcreteTest is YoGatewayBase_Test {
 
     function test_GetAssetAllowance_GivenAllowed_ReturnsAssetAllowance() external view {
         assertEq(
-            gateway.getAssetAllowance(address(mockVault), users.alice),
-            usdc.allowance(users.alice, address(gateway))
+            gateway.getAssetAllowance(address(mockVault), users.alice), usdc.allowance(users.alice, address(gateway))
         );
     }
 

@@ -23,8 +23,8 @@ contract Swap_Integration_Fuzz_Test is Integration_Test {
         // concrete suite).
         minOut = bound(minOut, 0, amountIn);
 
-        uint256 floor = (amountIn * (defaults.BPS_DENOMINATOR() - defaults.MAX_SLIPPAGE_BPS()))
-            / defaults.BPS_DENOMINATOR();
+        uint256 floor =
+            (amountIn * (defaults.BPS_DENOMINATOR() - defaults.MAX_SLIPPAGE_BPS())) / defaults.BPS_DENOMINATOR();
 
         // Aggregator delivers `amountIn` (1:1).
         usdt.mint(address(mockAggregator), amountIn);
@@ -32,18 +32,15 @@ contract Swap_Integration_Fuzz_Test is Integration_Test {
 
         if (minOut < floor) {
             vm.prank(users.vault);
-            vm.expectRevert(
-                abi.encodeWithSelector(IYoSwapAdapter.SlippageTooLow.selector, minOut, floor)
-            );
+            vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.SlippageTooLow.selector, minOut, floor));
             swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, _execCalldata(amountIn));
         } else {
             uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
             // Prank IMMEDIATELY before the swap — `vm.prank` only applies to the next external call,
             // and any view call (e.g. balanceOf) before it would consume the prank.
             vm.prank(users.vault);
-            uint256 amountOut = swapAdapter.swap(
-                address(usdc), address(usdt), amountIn, minOut, _execCalldata(amountIn)
-            );
+            uint256 amountOut =
+                swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, _execCalldata(amountIn));
             assertGe(amountOut, minOut, "amountOut >= minOut");
             assertEq(usdt.balanceOf(users.vault), vaultUsdtBefore + amountIn, "vault USDT delta");
         }

@@ -61,11 +61,7 @@ contract WithdrawERC4626IntegrationConcreteTest is Integration_Test {
         assertGt(sharesBurned, 0, "sharesBurned");
         assertLe(sharesBurned, sharesMinted, "sharesBurned <= sharesMinted");
         assertEq(usdc.balanceOf(users.vault), vaultBalBefore + toWithdraw, "vault USDC delta");
-        assertEq(
-            mockYieldVault.balanceOf(users.vault),
-            sharesBefore - sharesBurned,
-            "vault share delta"
-        );
+        assertEq(mockYieldVault.balanceOf(users.vault), sharesBefore - sharesBurned, "vault share delta");
 
         assertZeroBalance(address(usdc), address(yieldAdapter));
         assertEq(mockYieldVault.balanceOf(address(yieldAdapter)), 0, "adapter share balance");

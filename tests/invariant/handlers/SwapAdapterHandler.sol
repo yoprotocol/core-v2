@@ -54,7 +54,9 @@ contract SwapAdapterHandler is Test {
             amountIn,
             expectedOut,
             abi.encodeWithSelector(MockOneInchRouter.execute.selector, amountIn)
-        ) returns (uint256 out) {
+        ) returns (
+            uint256 out
+        ) {
             store.recordSwap(amountIn, out);
         } catch { }
     }

@@ -27,8 +27,7 @@ abstract contract AuthUpgradeable is Initializable {
 
     // keccak256(abi.encode(uint256(keccak256("auth.storage")) - 1)) & ~bytes32(uint256(0xff))
     // solhint-disable-next-line const-name-snakecase
-    bytes32 private constant AuthStorageLocation =
-        0xdd3fd67aef415aded9493b31ad20a02d2991d4bb2760431cc729821271eaea00;
+    bytes32 private constant AuthStorageLocation = 0xdd3fd67aef415aded9493b31ad20a02d2991d4bb2760431cc729821271eaea00;
 
     function _getAuthStorage() private pure returns (AuthStorage storage $) {
         assembly {
@@ -54,8 +53,7 @@ abstract contract AuthUpgradeable is Initializable {
     function isAuthorized(address user, bytes4 functionSig) public view virtual returns (bool) {
         AuthStorage storage $ = _getAuthStorage();
         IAuthority auth = $.authority;
-        return (address(auth) != address(0) && auth.canCall(user, address(this), functionSig))
-            || user == $.owner;
+        return (address(auth) != address(0) && auth.canCall(user, address(this), functionSig)) || user == $.owner;
     }
 
     function owner() public view virtual returns (address) {
@@ -72,8 +70,8 @@ abstract contract AuthUpgradeable is Initializable {
     function setAuthority(IAuthority newAuthority) public virtual {
         AuthStorage storage $ = _getAuthStorage();
         IAuthority auth = $.authority;
-        bool ok = msg.sender == $.owner
-            || (address(auth) != address(0) && auth.canCall(msg.sender, address(this), msg.sig));
+        bool ok =
+            msg.sender == $.owner || (address(auth) != address(0) && auth.canCall(msg.sender, address(this), msg.sig));
         if (!ok) {
             revert Unauthorized();
         }

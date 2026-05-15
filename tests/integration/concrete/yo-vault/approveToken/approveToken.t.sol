@@ -48,9 +48,7 @@ contract ApproveTokenIntegrationConcreteTest is YoVaultBase_Test {
     function test_RevertWhen_SpenderNotAllowlisted() external {
         // No registry entry → cap is zero.
         vm.prank(users.operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(IYoVault.SpenderNotAllowed.selector, address(usdc), SPENDER)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IYoVault.SpenderNotAllowed.selector, address(usdc), SPENDER));
         yoVault.approveToken(address(usdc), SPENDER, 1);
     }
 

@@ -49,9 +49,7 @@ contract ERC4626Fork_Test is Fork_Test {
 
         // Shares custody: the adapter calls `yieldVault.withdraw(...)` on behalf of the vault, so
         // the vault must approve the adapter on its 4626 shares.
-        bytes memory approveSharesCall = abi.encodeCall(
-            IERC20.approve, (address(adapter), type(uint256).max)
-        );
+        bytes memory approveSharesCall = abi.encodeCall(IERC20.approve, (address(adapter), type(uint256).max));
         _opManage(address(yieldVault), approveSharesCall);
     }
 
@@ -59,16 +57,14 @@ contract ERC4626Fork_Test is Fork_Test {
         uint256 vaultUsdcBefore = USDC.balanceOf(address(yoVault));
 
         // Deposit (assets → shares).
-        bytes memory depositCall =
-            abi.encodeCall(YoERC4626Adapter.deposit, (IERC4626(address(yieldVault)), DEPOSIT));
+        bytes memory depositCall = abi.encodeCall(YoERC4626Adapter.deposit, (IERC4626(address(yieldVault)), DEPOSIT));
         _opManage(address(adapter), depositCall);
 
         assertEq(USDC.balanceOf(address(yoVault)), vaultUsdcBefore - DEPOSIT, "vault drained");
         assertGt(yieldVault.balanceOf(address(yoVault)), 0, "vault holds 4626 shares");
 
         // withdrawAll → recover all USDC.
-        bytes memory withdrawCall =
-            abi.encodeCall(YoERC4626Adapter.withdrawAll, (IERC4626(address(yieldVault))));
+        bytes memory withdrawCall = abi.encodeCall(YoERC4626Adapter.withdrawAll, (IERC4626(address(yieldVault))));
         _opManage(address(adapter), withdrawCall);
 
         assertEq(USDC.balanceOf(address(yoVault)), vaultUsdcBefore, "vault USDC restored");
@@ -76,13 +72,11 @@ contract ERC4626Fork_Test is Fork_Test {
     }
 
     function test_Fork_ERC4626_PartialWithdraw() external {
-        bytes memory depositCall =
-            abi.encodeCall(YoERC4626Adapter.deposit, (IERC4626(address(yieldVault)), DEPOSIT));
+        bytes memory depositCall = abi.encodeCall(YoERC4626Adapter.deposit, (IERC4626(address(yieldVault)), DEPOSIT));
         _opManage(address(adapter), depositCall);
 
         uint256 part = DEPOSIT / 3;
-        bytes memory withdrawCall =
-            abi.encodeCall(YoERC4626Adapter.withdraw, (IERC4626(address(yieldVault)), part));
+        bytes memory withdrawCall = abi.encodeCall(YoERC4626Adapter.withdraw, (IERC4626(address(yieldVault)), part));
         _opManage(address(adapter), withdrawCall);
 
         assertEq(USDC.balanceOf(address(yoVault)), part, "got part USDC");

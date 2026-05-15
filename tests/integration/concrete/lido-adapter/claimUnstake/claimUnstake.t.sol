@@ -3,8 +3,6 @@ pragma solidity 0.8.34;
 
 import { IERC721Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
-import { IYoLidoAdapter } from "src/interfaces/IYoLidoAdapter.sol";
-
 import { MockLidoWithdrawalQueue } from "../../../../mocks/MockLidoWithdrawalQueue.sol";
 import { Integration_Test } from "../../../Integration.t.sol";
 

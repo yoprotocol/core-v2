@@ -36,12 +36,7 @@ contract YoSwapAdapter is ReentrancyGuard, IYoSwapAdapter {
     IYoSwapPairRegistry public immutable registry;
     uint256 public immutable maxSlippageBps;
 
-    constructor(
-        address _aggregator,
-        IYoSwapOracle _oracle,
-        IYoSwapPairRegistry _registry,
-        uint256 _maxSlippageBps
-    ) {
+    constructor(address _aggregator, IYoSwapOracle _oracle, IYoSwapPairRegistry _registry, uint256 _maxSlippageBps) {
         aggregator = _aggregator;
         oracle = _oracle;
         registry = _registry;

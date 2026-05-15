@@ -21,12 +21,7 @@ contract UpdateSharePrice_YoOracle_Integration_Fuzz_Test is YoOracleBase_Test {
 
     /// @dev For any price within the configured max-change limit, the second update succeeds.
     ///      For any price *outside* the limit, it reverts with PriceChangeTooBig.
-    function testFuzz_SecondUpdate_RespectsLimit(
-        uint256 p1,
-        uint256 p2
-    )
-        external
-    {
+    function testFuzz_SecondUpdate_RespectsLimit(uint256 p1, uint256 p2) external {
         // Stay in a band where (p1 * BPS_DENOMINATOR) does not overflow uint256.
         p1 = bound(p1, 1e9, 1e30);
         p2 = bound(p2, 1, 1e30);
@@ -42,12 +37,7 @@ contract UpdateSharePrice_YoOracle_Integration_Fuzz_Test is YoOracleBase_Test {
         if (shouldRevert) {
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    IYoOracle.PriceChangeTooBig.selector,
-                    users.vault,
-                    p2,
-                    p1,
-                    diffBps,
-                    uint256(DEFAULT_MAX_CHANGE_BPS)
+                    IYoOracle.PriceChangeTooBig.selector, users.vault, p2, p1, diffBps, uint256(DEFAULT_MAX_CHANGE_BPS)
                 )
             );
             oracle.updateSharePrice(users.vault, p2);

@@ -14,8 +14,8 @@ contract Defaults {
     uint256 public constant APPROVAL_CAP = 1_000_000e6;
 
     // ---------------------- SWAP ----------------------
-    uint256 public constant SWAP_AMOUNT_IN = 1_000e6;
-    uint256 public constant SWAP_EXPECTED_OUT = 1_000e6;
+    uint256 public constant SWAP_AMOUNT_IN = 1000e6;
+    uint256 public constant SWAP_EXPECTED_OUT = 1000e6;
     uint256 public constant ORACLE_QUOTE_1_TO_1 = 1e18;
     uint256 public constant MAX_SLIPPAGE_BPS = 50;
     uint256 public constant BPS_DENOMINATOR = 10_000;

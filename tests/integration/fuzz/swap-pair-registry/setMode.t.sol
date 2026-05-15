@@ -6,14 +6,7 @@ import { IYoSwapPairRegistry } from "src/interfaces/IYoSwapPairRegistry.sol";
 import { Integration_Test } from "../../Integration.t.sol";
 
 contract SetMode_SwapPairRegistry_Integration_Fuzz_Test is Integration_Test {
-    function testFuzz_SetMode_RoundTrips(
-        address vault,
-        address tokenIn,
-        address tokenOut,
-        uint8 modeRaw
-    )
-        external
-    {
+    function testFuzz_SetMode_RoundTrips(address vault, address tokenIn, address tokenOut, uint8 modeRaw) external {
         vm.assume(vault != address(0) && tokenIn != address(0) && tokenOut != address(0));
         vm.assume(tokenIn != tokenOut);
         // PairMode has 3 variants: DISALLOWED, ORACLE_CHECKED, OPERATOR_TRUSTED.
@@ -41,7 +34,8 @@ contract SetMode_SwapPairRegistry_Integration_Fuzz_Test is Integration_Test {
     {
         vm.assume(vault != address(0) && tokenIn != address(0) && tokenOut != address(0));
         vm.assume(tokenIn != tokenOut);
-        IYoSwapPairRegistry.PairMode mode = IYoSwapPairRegistry.PairMode((modeRaw % 2) + 1); // ORACLE_CHECKED or OPERATOR_TRUSTED
+        // Pick ORACLE_CHECKED or OPERATOR_TRUSTED (skip DISALLOWED for the allowlist-direction test).
+        IYoSwapPairRegistry.PairMode mode = IYoSwapPairRegistry.PairMode((modeRaw % 2) + 1);
 
         vm.prank(users.owner);
         pairRegistry.setMode(vault, tokenIn, tokenOut, mode);

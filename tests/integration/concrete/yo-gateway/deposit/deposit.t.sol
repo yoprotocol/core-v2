@@ -7,7 +7,7 @@ import { Errors } from "src/libraries/Errors.sol";
 import { YoGatewayBase_Test } from "../YoGatewayBase.t.sol";
 
 contract DepositIntegrationConcreteTest is YoGatewayBase_Test {
-    uint256 internal constant ASSETS = 1_000e6;
+    uint256 internal constant ASSETS = 1000e6;
     uint256 internal constant MIN_SHARES_OUT = 1; // mock vault is 1:1 on empty deposit
     uint32 internal constant PARTNER_ID = 42;
 
@@ -67,9 +67,7 @@ contract DepositIntegrationConcreteTest is YoGatewayBase_Test {
         uint256 expected = mockVault.previewDeposit(ASSETS);
 
         vm.prank(users.alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.Gateway__InsufficientSharesOut.selector, expected, expected + 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.Gateway__InsufficientSharesOut.selector, expected, expected + 1));
         gateway.deposit(address(mockVault), ASSETS, expected + 1, users.alice, PARTNER_ID);
     }
 }

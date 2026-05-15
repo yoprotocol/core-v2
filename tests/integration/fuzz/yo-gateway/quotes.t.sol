@@ -20,14 +20,10 @@ contract Quotes_YoGateway_Integration_Fuzz_Test is YoGatewayBase_Test {
             "convertToAssets"
         );
         assertEq(
-            gateway.quotePreviewDeposit(address(mockVault), amount),
-            mockVault.previewDeposit(amount),
-            "previewDeposit"
+            gateway.quotePreviewDeposit(address(mockVault), amount), mockVault.previewDeposit(amount), "previewDeposit"
         );
         assertEq(
-            gateway.quotePreviewRedeem(address(mockVault), amount),
-            mockVault.previewRedeem(amount),
-            "previewRedeem"
+            gateway.quotePreviewRedeem(address(mockVault), amount), mockVault.previewRedeem(amount), "previewRedeem"
         );
         assertEq(
             gateway.quotePreviewWithdraw(address(mockVault), amount),
@@ -39,13 +35,7 @@ contract Quotes_YoGateway_Integration_Fuzz_Test is YoGatewayBase_Test {
     /// @dev Allowance views also mirror the underlying ERC-20.
     function testFuzz_Allowance_MirrorsERC20(address owner) external view {
         vm.assume(owner != address(0));
-        assertEq(
-            gateway.getShareAllowance(address(mockVault), owner),
-            mockVault.allowance(owner, address(gateway))
-        );
-        assertEq(
-            gateway.getAssetAllowance(address(mockVault), owner),
-            usdc.allowance(owner, address(gateway))
-        );
+        assertEq(gateway.getShareAllowance(address(mockVault), owner), mockVault.allowance(owner, address(gateway)));
+        assertEq(gateway.getAssetAllowance(address(mockVault), owner), usdc.allowance(owner, address(gateway)));
     }
 }

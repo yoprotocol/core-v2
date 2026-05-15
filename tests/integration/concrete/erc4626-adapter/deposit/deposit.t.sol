@@ -38,7 +38,7 @@ contract DepositERC4626IntegrationConcreteTest is Integration_Test {
         MockERC4626 reentrantYield = new MockERC4626(rent, "Reentrant Yield", "rYV");
         _allowYieldVault(users.vault, reentrantYield);
 
-        rent.mint(users.vault, 1_000e6);
+        rent.mint(users.vault, 1000e6);
         vm.prank(users.vault);
         rent.approve(address(yieldAdapter), type(uint256).max);
 
@@ -59,11 +59,7 @@ contract DepositERC4626IntegrationConcreteTest is Integration_Test {
 
         assertGt(sharesReceived, 0, "sharesReceived");
         assertEq(usdc.balanceOf(users.vault), vaultBalBefore - amount, "vault USDC out");
-        assertEq(
-            mockYieldVault.balanceOf(users.vault),
-            sharesBefore + sharesReceived,
-            "vault share balance"
-        );
+        assertEq(mockYieldVault.balanceOf(users.vault), sharesBefore + sharesReceived, "vault share balance");
 
         assertZeroBalance(address(usdc), address(yieldAdapter));
         assertZeroAllowance(address(usdc), address(yieldAdapter), address(mockYieldVault));
