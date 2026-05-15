@@ -8,6 +8,14 @@ import { IStETH } from "src/interfaces/external/IStETH.sol";
 import { IWETH9 } from "src/interfaces/external/IWETH9.sol";
 import { IWithdrawalQueueERC721 } from "src/interfaces/external/IWithdrawalQueueERC721.sol";
 
+/// @dev Test-only extension of the queue surface. Adapters never call `finalize`; in production
+///      it's invoked by Lido core during the post-oracle-report accounting flow.
+interface IWithdrawalQueueExtended {
+    function finalize(uint256 lastRequestIdToBeFinalized, uint256 maxShareRate) external payable;
+    function getLastFinalizedRequestId() external view returns (uint256);
+    function getLastRequestId() external view returns (uint256);
+}
+
 import { Fork_Test } from "../Fork_Test.t.sol";
 
 /// @notice End-to-end: real YoVault → YoLidoAdapter → real Lido on Ethereum mainnet.
@@ -101,5 +109,55 @@ contract LidoFork_Test is Fork_Test {
         // Adapter is fully clean: dust was swept to the vault inside the call.
         assertEq(STETH.sharesOf(address(adapter)), 0, "adapter shares: zero");
         assertEq(IERC20(address(STETH)).allowance(address(adapter), address(QUEUE)), 0);
+    }
+
+    /// @notice Full stake → request → finalize → claim cycle against real Lido. In production the
+    ///         finalize step happens 1-5 days after the request, triggered by Lido's accounting
+    ///         oracle. Here we simulate it by impersonating Lido core (the FINALIZE_ROLE holder)
+    ///         and depositing the matching ETH into the queue — everything downstream of that is
+    ///         the real Lido / WithdrawalQueue / WETH9 path.
+    function test_Fork_Lido_FullStakeRequestFinalizeClaim() external {
+        // 1. Stake.
+        _opManage(address(adapter), abi.encodeCall(YoLidoAdapter.stake, (STAKE_AMOUNT)));
+
+        // 2. Request unstake.
+        bytes memory unstakeRet = _opManage(
+            address(adapter), abi.encodeCall(YoLidoAdapter.requestUnstake, (STAKE_AMOUNT))
+        );
+        uint256 requestId = abi.decode(unstakeRet, (uint256));
+
+        // 3. Simulate Lido finalization.
+        //    - FINALIZE_ROLE is held by Lido core, which is the stETH contract itself.
+        //    - maxShareRate is 1e27-scaled ETH/share (== getPooledEthByShares(1e27)).
+        //    - ETH to lock equals (roughly) the stETH amount being finalized.
+        uint256 maxShareRate = STETH.getPooledEthByShares(1e27);
+        address lidoCore = address(STETH);
+        vm.deal(lidoCore, STAKE_AMOUNT + 1 ether); // headroom for share-rate math
+        vm.prank(lidoCore);
+        IWithdrawalQueueExtended(address(QUEUE)).finalize{ value: STAKE_AMOUNT }(requestId, maxShareRate);
+
+        // Sanity: the queue records our request as finalized.
+        uint256 lastFinalized = IWithdrawalQueueExtended(address(QUEUE)).getLastFinalizedRequestId();
+        assertGe(lastFinalized, requestId, "queue advanced past our id");
+
+        // 4. Claim. Vault gets WETH back; adapter ends clean.
+        uint256 wethBefore = IERC20(address(WETH)).balanceOf(address(yoVault));
+        bytes memory claimRet = _opManage(address(adapter), abi.encodeCall(YoLidoAdapter.claimUnstake, (requestId)));
+        uint256 wethReceived = abi.decode(claimRet, (uint256));
+
+        assertGt(wethReceived, 0, "claim delivered WETH");
+        assertEq(
+            IERC20(address(WETH)).balanceOf(address(yoVault)),
+            wethBefore + wethReceived,
+            "vault WETH delta == claim"
+        );
+        // The NFT is burned by claimWithdrawal — `ownerOf(requestId)` reverts after a successful claim.
+        vm.expectRevert();
+        QUEUE.ownerOf(requestId);
+
+        // Adapter custody invariants.
+        assertEq(address(adapter).balance, 0, "no leftover ETH");
+        assertEq(IERC20(address(WETH)).balanceOf(address(adapter)), 0, "no leftover WETH");
+        assertEq(STETH.sharesOf(address(adapter)), 0, "no leftover stETH shares");
     }
 }
