@@ -4,10 +4,11 @@ pragma solidity 0.8.34;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { IYoERC4626Adapter } from "../../interfaces/IYoERC4626Adapter.sol";
 import { IYoERC4626VaultRegistry } from "../../interfaces/IYoERC4626VaultRegistry.sol";
+import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
+import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 
 /// @title  YoERC4626Adapter
 /// @notice Immutable adapter for any ERC-4626 yield vault (MetaMorpho, Yearn V3, Pendle PT, etc.).
@@ -16,14 +17,15 @@ import { IYoERC4626VaultRegistry } from "../../interfaces/IYoERC4626VaultRegistr
 ///           - `msg.sender` is the vault when invoked via `YoVault.manage(...)`.
 ///           - `receiver` and `owner` to `IERC4626.deposit`/`withdraw`/`redeem` are always
 ///             `msg.sender`.
-///           - Adapter holds zero balance and zero allowance to the yield vault at the end of
-///             every call.
-contract YoERC4626Adapter is ReentrancyGuard, IYoERC4626Adapter {
+///           - Each call leaks zero new balance / zero allowance to the yield vault; pre-existing
+///             dust is recoverable by registered YO vaults via `rescue` / `rescueETH`
+///             (see {YoAdapterBase}).
+contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
     using SafeERC20 for IERC20;
 
     IYoERC4626VaultRegistry public immutable registry;
 
-    constructor(IYoERC4626VaultRegistry _registry) {
+    constructor(IYoERC4626VaultRegistry _registry, IYoRegistry _yoRegistry) YoAdapterBase(_yoRegistry) {
         registry = _registry;
     }
 
@@ -40,6 +42,9 @@ contract YoERC4626Adapter is ReentrancyGuard, IYoERC4626Adapter {
 
         IERC20 asset = IERC20(yieldVault.asset());
         uint256 sharesBefore = yieldVault.balanceOf(vault);
+        // Snapshot to tolerate pre-existing dust. Without this, any address could permanently DoS
+        // deposit by transferring 1 wei of `asset` to the adapter.
+        uint256 assetBalBefore = asset.balanceOf(address(this));
 
         asset.safeTransferFrom(vault, address(this), assets);
         asset.forceApprove(address(yieldVault), assets);
@@ -53,9 +58,10 @@ contract YoERC4626Adapter is ReentrancyGuard, IYoERC4626Adapter {
             revert NoShareDelta();
         }
 
-        uint256 leftoverBal = asset.balanceOf(address(this));
-        if (leftoverBal != 0) {
-            revert LeftoverBalance(address(asset), leftoverBal);
+        // Delta check: the revert value is what *this* call leaked, not the absolute balance.
+        uint256 assetBalAfter = asset.balanceOf(address(this));
+        if (assetBalAfter != assetBalBefore) {
+            revert LeftoverBalance(address(asset), assetBalAfter - assetBalBefore);
         }
         uint256 leftoverAllow = asset.allowance(address(this), address(yieldVault));
         if (leftoverAllow != 0) {

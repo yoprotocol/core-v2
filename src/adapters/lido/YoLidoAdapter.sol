@@ -3,12 +3,13 @@ pragma solidity 0.8.34;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { IStETH } from "../../interfaces/external/IStETH.sol";
 import { IWETH9 } from "../../interfaces/external/IWETH9.sol";
 import { IWithdrawalQueueERC721 } from "../../interfaces/external/IWithdrawalQueueERC721.sol";
 import { IYoLidoAdapter } from "../../interfaces/IYoLidoAdapter.sol";
+import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
+import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 
 /// @title  YoLidoAdapter
 /// @notice Immutable Lido adapter: stake WETH → stETH (sync), request unstake → NFT (async), claim
@@ -17,10 +18,12 @@ import { IYoLidoAdapter } from "../../interfaces/IYoLidoAdapter.sol";
 ///           - `msg.sender` is the vault when invoked via `YoVault.manage(...)`.
 ///           - All Lido / queue calls use the vault as `owner` / `receiver` (or transitively, via
 ///             adapter custody followed by a forward to the vault).
-///           - Adapter ends every call with zero ETH, zero WETH, zero stETH-shares, zero allowances.
+///           - Each call leaks zero new ETH / WETH / stETH-shares / allowances; pre-existing dust
+///             is recoverable by registered YO vaults via `rescue` / `rescueETH`
+///             (see {YoAdapterBase}).
 ///           - `receive` accepts ETH only from WETH (on `withdraw`) and the withdrawal queue (on
 ///             `claimWithdrawal`); all other senders revert. Prevents stray-ETH custody.
-contract YoLidoAdapter is ReentrancyGuard, IYoLidoAdapter {
+contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
     using SafeERC20 for IERC20;
 
     IStETH public immutable stETH;
@@ -28,7 +31,15 @@ contract YoLidoAdapter is ReentrancyGuard, IYoLidoAdapter {
     IWETH9 public immutable weth;
     address public immutable referral;
 
-    constructor(IStETH _stETH, IWithdrawalQueueERC721 _queue, IWETH9 _weth, address _referral) {
+    constructor(
+        IStETH _stETH,
+        IWithdrawalQueueERC721 _queue,
+        IWETH9 _weth,
+        address _referral,
+        IYoRegistry _yoRegistry
+    )
+        YoAdapterBase(_yoRegistry)
+    {
         stETH = _stETH;
         withdrawalQueue = _queue;
         weth = _weth;
@@ -54,34 +65,42 @@ contract YoLidoAdapter is ReentrancyGuard, IYoLidoAdapter {
         address vault = msg.sender;
 
         IERC20 wethToken = IERC20(address(weth));
+        // Snapshot to tolerate pre-existing dust. Without these, any address could permanently DoS
+        // staking by selfdestructing 1 wei of ETH or transferring 1 wei of WETH to the adapter.
+        uint256 ethBalBefore = address(this).balance;
+        uint256 wethBalBefore = wethToken.balanceOf(address(this));
+        uint256 stETHSharesBefore = stETH.sharesOf(address(this));
+
         wethToken.safeTransferFrom(vault, address(this), wethAmount);
         weth.withdraw(wethAmount);
 
         // Lido mints shares to msg.sender (the adapter). Return value is shares, not stETH tokens.
         stETH.submit{ value: wethAmount }(referral);
 
-        // Forward the adapter's full share balance to the vault using transferShares — the standard
-        // ERC-20 `transfer` path would lose 1-2 wei to share↔token rounding and leave dust.
-        uint256 shares = stETH.sharesOf(address(this));
-        stETH.transferShares(vault, shares);
+        // Forward the just-minted shares to the vault using `transferShares` — the standard
+        // ERC-20 `transfer` path would lose 1-2 wei to share↔token rounding and leave dust. Any
+        // pre-existing dust shares stay put (no economic impact, see audit notes).
+        uint256 mintedShares = stETH.sharesOf(address(this)) - stETHSharesBefore;
+        stETH.transferShares(vault, mintedShares);
         // `transferShares` is exact in shares; convert via the canonical pure view to get the token
         // amount the vault received. Cheaper and more rebase-robust than diffing balanceOf reads.
-        stETHReceived = stETH.getPooledEthByShares(shares);
+        stETHReceived = stETH.getPooledEthByShares(mintedShares);
         if (stETHReceived == 0) {
             revert NoShareDelta();
         }
 
-        if (address(this).balance != 0) {
-            revert LeftoverEth(address(this).balance);
+        // Delta checks: revert values are the leak from *this* call, not absolute balances.
+        if (address(this).balance != ethBalBefore) {
+            revert LeftoverEth(address(this).balance - ethBalBefore);
         }
-        uint256 leftoverWeth = wethToken.balanceOf(address(this));
-        if (leftoverWeth != 0) {
-            revert LeftoverBalance(address(weth), leftoverWeth);
+        uint256 wethBalAfter = wethToken.balanceOf(address(this));
+        if (wethBalAfter != wethBalBefore) {
+            revert LeftoverBalance(address(weth), wethBalAfter - wethBalBefore);
         }
-        // `transferShares` above is exact-in-shares; this guard is paranoia, not load-bearing.
-        uint256 leftoverShares = stETH.sharesOf(address(this));
-        if (leftoverShares != 0) {
-            revert LeftoverShares(leftoverShares);
+        // `transferShares` is exact-in-shares; guard is paranoia, not load-bearing.
+        uint256 stETHSharesAfter = stETH.sharesOf(address(this));
+        if (stETHSharesAfter != stETHSharesBefore) {
+            revert LeftoverShares(stETHSharesAfter - stETHSharesBefore);
         }
     }
 
@@ -141,28 +160,34 @@ contract YoLidoAdapter is ReentrancyGuard, IYoLidoAdapter {
     /// @inheritdoc IYoLidoAdapter
     function claimUnstake(uint256 requestId) external nonReentrant returns (uint256 wethReceived) {
         address vault = msg.sender;
+        IERC20 wethToken = IERC20(address(weth));
+
+        // Snapshot to tolerate pre-existing dust. Without these, any address could permanently DoS
+        // claims by selfdestructing 1 wei of ETH or transferring 1 wei of WETH to the adapter.
+        uint256 ethBalBefore = address(this).balance;
+        uint256 wethBalBefore = wethToken.balanceOf(address(this));
 
         // Pull NFT from the vault. Vault must have set approval-for-all on the adapter at onboarding.
         withdrawalQueue.transferFrom(vault, address(this), requestId);
 
         // Adapter is now the NFT owner; claimWithdrawal sends ETH to msg.sender (adapter).
-        uint256 ethBefore = address(this).balance;
         withdrawalQueue.claimWithdrawal(requestId);
-        uint256 ethReceived = address(this).balance - ethBefore;
+        uint256 ethReceived = address(this).balance - ethBalBefore;
         if (ethReceived == 0) {
             revert NoTransfer();
         }
 
         weth.deposit{ value: ethReceived }();
-        IERC20(address(weth)).safeTransfer(vault, ethReceived);
+        wethToken.safeTransfer(vault, ethReceived);
         wethReceived = ethReceived;
 
-        if (address(this).balance != 0) {
-            revert LeftoverEth(address(this).balance);
+        // Delta checks: revert values are the leak from *this* call, not absolute balances.
+        if (address(this).balance != ethBalBefore) {
+            revert LeftoverEth(address(this).balance - ethBalBefore);
         }
-        uint256 leftoverWeth = IERC20(address(weth)).balanceOf(address(this));
-        if (leftoverWeth != 0) {
-            revert LeftoverBalance(address(weth), leftoverWeth);
+        uint256 wethBalAfter = wethToken.balanceOf(address(this));
+        if (wethBalAfter != wethBalBefore) {
+            revert LeftoverBalance(address(weth), wethBalAfter - wethBalBefore);
         }
     }
 }

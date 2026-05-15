@@ -90,13 +90,17 @@ contract YoGateway is Initializable, ReentrancyGuardTransient, IYoGateway {
         require(registry.isYoVault(yoVault), Errors.Gateway__VaultNotAllowed());
 
         IERC20(yoVault).safeTransferFrom(msg.sender, address(this), shares);
+        // `requestRedeem` returns `assetsWithFee` (gross of withdrawal fee) on the instant path,
+        // but the receiver actually gets `assetsWithFee - fee`. `previewRedeem` on YoVault V3 is
+        // overridden to return the net amount — that's what we compare against `minAssetsOut`.
+        uint256 expectedNet = IERC4626(yoVault).previewRedeem(shares);
         assetsOrRequestId = IYoVault(yoVault).requestRedeem(shares, receiver, address(this));
 
         bool instant = assetsOrRequestId > 0;
 
-        // If the redemption is instant, we need to check if the assets out is greater than the minimum assets out
-        if (instant && assetsOrRequestId < minAssetsOut) {
-            revert Errors.Gateway__InsufficientAssetsOut(assetsOrRequestId, minAssetsOut);
+        // Slippage guard against the *net* amount the receiver gets (fee-adjusted).
+        if (instant && expectedNet < minAssetsOut) {
+            revert Errors.Gateway__InsufficientAssetsOut(expectedNet, minAssetsOut);
         }
 
         emit YoGatewayRedeem(partnerId, yoVault, receiver, shares, assetsOrRequestId, instant);

@@ -11,6 +11,7 @@ import { IYoOracle } from "src/interfaces/IYoOracle.sol";
 import { YoApprovalRegistry } from "src/registries/YoApprovalRegistry.sol";
 import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.sol";
 import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
+import { YoRegistry } from "src/YoRegistry.sol";
 import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
 import { YoVault } from "src/YoVault.sol";
 
@@ -48,6 +49,7 @@ abstract contract Fork_Test is Test {
     YoMorphoMarketRegistry internal marketRegistry;
     YoSwapPairRegistry internal pairRegistry;
     YoERC4626VaultRegistry internal yieldVaultRegistry;
+    YoRegistry internal yoRegistry;
 
     /// @dev The YoVault NAV oracle address is a hardcoded constant. We mock it at 1:1 so vault NAV
     ///      math doesn't depend on the legacy off-chain price-publisher being live on the fork.
@@ -106,11 +108,20 @@ abstract contract Fork_Test is Test {
         yieldVaultRegistry = new YoERC4626VaultRegistry(users.owner);
         vm.stopPrank();
 
+        // YoRegistry behind its own ERC-1967 proxy — adapters need this for `rescue` auth.
+        YoRegistry yoRegistryImpl = new YoRegistry();
+        bytes memory yoRegistryInit = abi.encodeCall(YoRegistry.initialize, (users.owner, IAuthority(address(0))));
+        yoRegistry = YoRegistry(payable(address(new ERC1967Proxy(address(yoRegistryImpl), yoRegistryInit))));
+
         // YoVault behind ERC-1967 proxy.
         YoVault impl = new YoVault();
         bytes memory initData = abi.encodeCall(YoVault.initialize, (asset, users.owner, name, symbol));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         yoVault = YoVault(payable(address(proxy)));
+
+        // Register the vault so it counts as a valid YO vault for adapter rescue.
+        vm.prank(users.owner);
+        yoRegistry.addYoVault(address(yoVault));
 
         // Authority + operator selector grants.
         authority = new MockAuthority();
@@ -132,6 +143,7 @@ abstract contract Fork_Test is Test {
         vm.label(address(marketRegistry), "YoMorphoMarketRegistry");
         vm.label(address(pairRegistry), "YoSwapPairRegistry");
         vm.label(address(yieldVaultRegistry), "YoERC4626VaultRegistry");
+        vm.label(address(yoRegistry), "YoRegistry");
     }
 
     /// @dev Approve `spender` to spend up to `cap` of `token` on behalf of the vault, via the

@@ -28,6 +28,7 @@ import { MockOneInchRouter } from "./mocks/MockOneInchRouter.sol";
 import { MockStETH } from "./mocks/MockStETH.sol";
 import { MockSwapOracle } from "./mocks/MockSwapOracle.sol";
 import { MockWETH9 } from "./mocks/MockWETH9.sol";
+import { MockYoRegistry } from "./mocks/MockYoRegistry.sol";
 
 import { Assertions } from "./utils/Assertions.sol";
 import { Defaults } from "./utils/Defaults.sol";
@@ -66,6 +67,7 @@ abstract contract Base_Test is Assertions, Modifiers {
     YoMorphoMarketRegistry internal marketRegistry;
     YoSwapPairRegistry internal pairRegistry;
     YoERC4626VaultRegistry internal yieldVaultRegistry;
+    MockYoRegistry internal yoRegistry;
     YoMorphoAdapter internal morphoAdapter;
     YoSwapAdapter internal swapAdapter;
     YoERC4626Adapter internal yieldAdapter;
@@ -114,31 +116,40 @@ abstract contract Base_Test is Assertions, Modifiers {
         vm.label(address(mockStETH), "MockStETH");
         vm.label(address(mockLidoQueue), "MockLidoWithdrawalQueue");
 
+        // MockYoRegistry — drops the IERC4626 contract requirement on `addYoVault` so the EOA
+        // stand-in `users.vault` can be marked as a registered vault. The real `YoRegistry` is
+        // exercised separately by the BTT + fuzz suites in `tests/integration/concrete/yo-registry`.
+        yoRegistry = new MockYoRegistry();
+        yoRegistry.setVault(users.vault, true);
+
         // Deploy Yo contracts as the multisig owner.
         vm.startPrank(users.owner);
         approvalRegistry = new YoApprovalRegistry(users.owner);
         marketRegistry = new YoMorphoMarketRegistry(users.owner);
         pairRegistry = new YoSwapPairRegistry(users.owner);
         yieldVaultRegistry = new YoERC4626VaultRegistry(users.owner);
-        morphoAdapter = new YoMorphoAdapter(IMorpho(address(mockMorpho)), marketRegistry);
+        morphoAdapter = new YoMorphoAdapter(IMorpho(address(mockMorpho)), marketRegistry, yoRegistry);
         swapAdapter = new YoSwapAdapter({
             _aggregator: address(mockAggregator),
             _oracle: IYoSwapOracle(address(mockOracle)),
             _registry: IYoSwapPairRegistry(address(pairRegistry)),
-            _maxSlippageBps: defaults.MAX_SLIPPAGE_BPS()
+            _maxSlippageBps: defaults.MAX_SLIPPAGE_BPS(),
+            _yoRegistry: yoRegistry
         });
-        yieldAdapter = new YoERC4626Adapter(yieldVaultRegistry);
+        yieldAdapter = new YoERC4626Adapter(yieldVaultRegistry, yoRegistry);
         lidoAdapter = new YoLidoAdapter({
             _stETH: IStETH(address(mockStETH)),
             _queue: IWithdrawalQueueERC721(address(mockLidoQueue)),
             _weth: IWETH9(address(mockWETH)),
-            _referral: address(0)
+            _referral: address(0),
+            _yoRegistry: yoRegistry
         });
         vm.stopPrank();
         vm.label(address(approvalRegistry), "YoApprovalRegistry");
         vm.label(address(marketRegistry), "YoMorphoMarketRegistry");
         vm.label(address(pairRegistry), "YoSwapPairRegistry");
         vm.label(address(yieldVaultRegistry), "YoERC4626VaultRegistry");
+        vm.label(address(yoRegistry), "YoRegistry");
         vm.label(address(morphoAdapter), "YoMorphoAdapter");
         vm.label(address(swapAdapter), "YoSwapAdapter");
         vm.label(address(yieldAdapter), "YoERC4626Adapter");

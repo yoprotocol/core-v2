@@ -46,7 +46,9 @@ contract MorphoFork_Test is Fork_Test {
         _deployStack(USDC, "Yo USDC Vault", "yoUSDC");
 
         // Adapter under test, wired to real Morpho + our market registry.
-        adapter = new YoMorphoAdapter(IMorpho(address(MORPHO)), IYoMorphoMarketRegistry(address(marketRegistry)));
+        adapter = new YoMorphoAdapter(
+            IMorpho(address(MORPHO)), IYoMorphoMarketRegistry(address(marketRegistry)), yoRegistry
+        );
         vm.label(address(adapter), "YoMorphoAdapter");
 
         // Deploy a fresh market on the fork. Permissionless: needs only an enabled IRM + LLTV.

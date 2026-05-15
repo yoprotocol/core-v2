@@ -4,10 +4,11 @@ pragma solidity 0.8.34;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IYoSwapAdapter } from "./../../interfaces/IYoSwapAdapter.sol";
 import { IYoSwapOracle } from "./../../interfaces/IYoSwapOracle.sol";
 import { IYoSwapPairRegistry } from "./../../interfaces/IYoSwapPairRegistry.sol";
+import { IYoRegistry } from "./../../interfaces/IYoRegistry.sol";
+import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 
 /// @title  YoSwapAdapter
 /// @notice Generic immutable swap adapter for **synchronous, approve-based aggregators**: 1inch v5/v6,
@@ -25,7 +26,7 @@ import { IYoSwapPairRegistry } from "./../../interfaces/IYoSwapPairRegistry.sol"
 ///
 ///         Deploy one instance per target aggregator. The aggregator address lives in deployment
 ///         metadata / the operations runbook, not in the contract name.
-contract YoSwapAdapter is ReentrancyGuard, IYoSwapAdapter {
+contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -36,7 +37,15 @@ contract YoSwapAdapter is ReentrancyGuard, IYoSwapAdapter {
     IYoSwapPairRegistry public immutable registry;
     uint256 public immutable maxSlippageBps;
 
-    constructor(address _aggregator, IYoSwapOracle _oracle, IYoSwapPairRegistry _registry, uint256 _maxSlippageBps) {
+    constructor(
+        address _aggregator,
+        IYoSwapOracle _oracle,
+        IYoSwapPairRegistry _registry,
+        uint256 _maxSlippageBps,
+        IYoRegistry _yoRegistry
+    )
+        YoAdapterBase(_yoRegistry)
+    {
         aggregator = _aggregator;
         oracle = _oracle;
         registry = _registry;
@@ -80,6 +89,9 @@ contract YoSwapAdapter is ReentrancyGuard, IYoSwapAdapter {
         IERC20 inToken = IERC20(tokenIn);
         IERC20 outToken = IERC20(tokenOut);
         uint256 vaultOutBefore = outToken.balanceOf(vault);
+        // Snapshot to tolerate pre-existing dust. Without this, any address could permanently DoS
+        // swaps for a given `tokenIn` by transferring 1 wei to the adapter.
+        uint256 inBalBefore = inToken.balanceOf(address(this));
 
         inToken.safeTransferFrom(vault, address(this), amountIn);
         inToken.forceApprove(aggregator, amountIn);
@@ -97,9 +109,10 @@ contract YoSwapAdapter is ReentrancyGuard, IYoSwapAdapter {
         }
 
         inToken.forceApprove(aggregator, 0);
-        uint256 leftoverIn = inToken.balanceOf(address(this));
-        if (leftoverIn != 0) {
-            revert LeftoverInput(tokenIn, leftoverIn);
+        // Delta check: the revert value is what *this* call leaked, not the absolute balance.
+        uint256 inBalAfter = inToken.balanceOf(address(this));
+        if (inBalAfter != inBalBefore) {
+            revert LeftoverInput(tokenIn, inBalAfter - inBalBefore);
         }
         uint256 leftoverAllow = inToken.allowance(address(this), aggregator);
         if (leftoverAllow != 0) {

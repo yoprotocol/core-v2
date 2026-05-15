@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.34;
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
+
+/// @title  YoAdapterBase
+/// @notice Shared base for every YO adapter. Provides the `rescue` / `rescueETH` recovery surface
+///         and the canonical `nonReentrant` guard.
+///
+///         The rescue methods are callable only by a currently-registered YO vault (per
+///         `YoRegistry.isYoVault`) and always send recovered funds to `msg.sender` — there is no
+///         caller-controlled destination. Combined with the immutable `YoRegistry` reference, this
+///         means the only way to receive funds via rescue is to be allowlisted by the multisig
+///         that owns the registry.
+///
+/// @dev    INVARIANTS:
+///           - The adapter holds no admin keys and no upgrade path.
+///           - Rescue is permissioned by *current* registry membership; a removed vault loses
+///             rescue rights.
+///           - Funds always flow to `msg.sender`; the rescue path cannot be redirected.
+///           - Rescue shares the same reentrancy guard as the adapter's primary methods, so no
+///             cross-method reentry is possible.
+abstract contract YoAdapterBase is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
+    /// @notice Registry consulted to validate rescue callers. Immutable for the lifetime of the
+    ///         adapter; if a new registry is ever needed, redeploy.
+    IYoRegistry public immutable yoRegistry;
+
+    error CallerNotYoVault(address caller);
+    error ZeroRegistry();
+    error EthTransferFailed();
+
+    /// @notice Emitted on every successful `rescue(IERC20)`. `amount == 0` is permitted and emits.
+    event Rescued(address indexed token, address indexed to, uint256 amount);
+    /// @notice Emitted on every successful `rescueETH()`. `amount == 0` is permitted and emits.
+    event RescuedETH(address indexed to, uint256 amount);
+
+    constructor(IYoRegistry _yoRegistry) {
+        if (address(_yoRegistry) == address(0)) {
+            revert ZeroRegistry();
+        }
+        yoRegistry = _yoRegistry;
+    }
+
+    /// @notice Sweep this adapter's full balance of `token` to the calling vault. Callable only by
+    ///         a currently-registered YO vault.
+    /// @return amount The token balance transferred.
+    function rescue(IERC20 token) external nonReentrant returns (uint256 amount) {
+        if (!yoRegistry.isYoVault(msg.sender)) {
+            revert CallerNotYoVault(msg.sender);
+        }
+        amount = token.balanceOf(address(this));
+        if (amount != 0) {
+            token.safeTransfer(msg.sender, amount);
+        }
+        emit Rescued(address(token), msg.sender, amount);
+    }
+
+    /// @notice Sweep this adapter's full ETH balance to the calling vault. Callable only by a
+    ///         currently-registered YO vault.
+    /// @return amount The ETH amount transferred.
+    function rescueETH() external nonReentrant returns (uint256 amount) {
+        if (!yoRegistry.isYoVault(msg.sender)) {
+            revert CallerNotYoVault(msg.sender);
+        }
+        amount = address(this).balance;
+        if (amount != 0) {
+            (bool ok,) = payable(msg.sender).call{ value: amount }("");
+            if (!ok) {
+                revert EthTransferFailed();
+            }
+        }
+        emit RescuedETH(msg.sender, amount);
+    }
+}

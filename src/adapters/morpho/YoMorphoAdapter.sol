@@ -3,11 +3,12 @@ pragma solidity 0.8.34;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { Id, IMorpho, MarketParams } from "../../interfaces/IMorpho.sol";
 import { IYoMorphoAdapter } from "../../interfaces/IYoMorphoAdapter.sol";
 import { IYoMorphoMarketRegistry } from "../../interfaces/IYoMorphoMarketRegistry.sol";
+import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
+import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 
 /// @title  YoMorphoAdapter
 /// @notice Immutable Morpho Blue adapter for `supply`, `withdraw`, `withdrawAll`. Forces every call to
@@ -16,14 +17,21 @@ import { IYoMorphoMarketRegistry } from "../../interfaces/IYoMorphoMarketRegistr
 ///           - `msg.sender` is the vault when invoked via `YoVault.manage(...)`.
 ///           - `onBehalf` and `receiver` arguments to Morpho are always `msg.sender`.
 ///           - Morpho `data` is always `""` so no callback is ever triggered.
-///           - Adapter holds zero balance and zero allowance to Morpho at the end of every call.
-contract YoMorphoAdapter is ReentrancyGuard, IYoMorphoAdapter {
+///           - Each call leaks zero new balance / zero allowance to Morpho; pre-existing dust is
+///             recoverable by registered YO vaults via `rescue` / `rescueETH` (see {YoAdapterBase}).
+contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
     using SafeERC20 for IERC20;
 
     IMorpho public immutable morpho;
     IYoMorphoMarketRegistry public immutable registry;
 
-    constructor(IMorpho _morpho, IYoMorphoMarketRegistry _registry) {
+    constructor(
+        IMorpho _morpho,
+        IYoMorphoMarketRegistry _registry,
+        IYoRegistry _yoRegistry
+    )
+        YoAdapterBase(_yoRegistry)
+    {
         morpho = _morpho;
         registry = _registry;
     }
@@ -52,6 +60,9 @@ contract YoMorphoAdapter is ReentrancyGuard, IYoMorphoAdapter {
 
         IERC20 token = IERC20(p.loanToken);
         uint256 sharesBefore = morpho.position(marketId, vault).supplyShares;
+        // Snapshot to tolerate pre-existing dust. Without this, any address could permanently DoS
+        // supply by transferring 1 wei of `loanToken` to the adapter.
+        uint256 tokenBalBefore = token.balanceOf(address(this));
 
         token.safeTransferFrom(vault, address(this), assets);
         token.forceApprove(address(morpho), assets);
@@ -65,9 +76,10 @@ contract YoMorphoAdapter is ReentrancyGuard, IYoMorphoAdapter {
             revert NoShareDelta();
         }
 
-        uint256 leftoverBal = token.balanceOf(address(this));
-        if (leftoverBal != 0) {
-            revert LeftoverBalance(p.loanToken, leftoverBal);
+        // Delta check: the revert value is what *this* call leaked, not the absolute balance.
+        uint256 tokenBalAfter = token.balanceOf(address(this));
+        if (tokenBalAfter != tokenBalBefore) {
+            revert LeftoverBalance(p.loanToken, tokenBalAfter - tokenBalBefore);
         }
 
         uint256 leftoverAllow = token.allowance(address(this), address(morpho));

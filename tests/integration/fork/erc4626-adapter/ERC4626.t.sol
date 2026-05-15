@@ -33,7 +33,7 @@ contract ERC4626Fork_Test is Fork_Test {
 
         _deployStack(USDC, "Yo USDC Vault", "yoUSDC");
 
-        adapter = new YoERC4626Adapter(IYoERC4626VaultRegistry(address(yieldVaultRegistry)));
+        adapter = new YoERC4626Adapter(IYoERC4626VaultRegistry(address(yieldVaultRegistry)), yoRegistry);
         yieldVault = new ForkYieldVault(USDC);
         vm.label(address(adapter), "YoERC4626Adapter");
         vm.label(address(yieldVault), "ForkYieldVault");

@@ -50,7 +50,8 @@ contract SwapFork_Test is Fork_Test {
             _aggregator: UNIV3_ROUTER,
             _oracle: IYoSwapOracle(address(0xCAFE)),
             _registry: IYoSwapPairRegistry(address(pairRegistry)),
-            _maxSlippageBps: MAX_SLIPPAGE_BPS
+            _maxSlippageBps: MAX_SLIPPAGE_BPS,
+            _yoRegistry: yoRegistry
         });
         vm.label(address(adapter), "YoSwapAdapter");
 

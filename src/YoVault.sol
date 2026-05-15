@@ -147,9 +147,14 @@ contract YoVault is ERC4626Upgradeable, Compatible, IYoVault, AuthUpgradeable, P
     function approveToken(address token, address spender, uint256 amount) external requiresAuth {
         IYoApprovalRegistry registry = approvalRegistry;
         require(address(registry) != address(0), ApprovalRegistryUnset());
-        uint256 cap = registry.maxApproval(address(this), token, spender);
-        require(cap != 0, SpenderNotAllowed(token, spender));
-        require(amount <= cap, AmountExceedsCap(amount, cap));
+        // `amount == 0` is always permitted so a live allowance can be revoked even after the admin
+        // sets the registry cap to zero. Without this bypass, "disabling" a spender via the
+        // registry would not be able to clear an existing on-chain allowance.
+        if (amount != 0) {
+            uint256 cap = registry.maxApproval(address(this), token, spender);
+            require(cap != 0, SpenderNotAllowed(token, spender));
+            require(amount <= cap, AmountExceedsCap(amount, cap));
+        }
         IERC20(token).forceApprove(spender, amount);
     }
 

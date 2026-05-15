@@ -38,7 +38,13 @@ contract LidoFork_Test is Fork_Test {
 
         _deployStack(IERC20(address(WETH)), "Yo WETH Vault", "yoWETH");
 
-        adapter = new YoLidoAdapter({ _stETH: STETH, _queue: QUEUE, _weth: WETH, _referral: address(0) });
+        adapter = new YoLidoAdapter({
+            _stETH: STETH,
+            _queue: QUEUE,
+            _weth: WETH,
+            _referral: address(0),
+            _yoRegistry: yoRegistry
+        });
         vm.label(address(adapter), "YoLidoAdapter");
 
         // Fund the vault with WETH directly: ETH → WETH wrap.
