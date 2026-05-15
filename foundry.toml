@@ -7,7 +7,7 @@
 [profile.default]
 auto_detect_solc = false
 bytecode_hash = "ipfs"
-evm_version = "shanghai"
+evm_version = "cancun"
 fs_permissions = [
   { access = "read", path = "./out" },
   { access = "read", path = "./out-optimized" },

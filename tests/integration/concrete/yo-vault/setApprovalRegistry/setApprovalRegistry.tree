@@ -1,0 +1,10 @@
+SetApprovalRegistry_Integration_Concrete_Test
+├── when caller not authorized
+│  └── it should revert with Unauthorized
+└── when caller authorized
+   ├── given no prior registry
+   │  ├── it should set the registry
+   │  └── it should emit ApprovalRegistrySet
+   └── given prior registry
+      ├── it should replace the registry
+      └── it should emit ApprovalRegistrySet with previous

@@ -1,0 +1,17 @@
+Manage_Integration_Concrete_Test
+├── single-call form
+│  ├── when caller not authorized
+│  │  └── it should revert with Unauthorized
+│  └── when caller authorized
+│     ├── when target selector not granted to caller
+│     │  └── it should revert with TargetMethodNotAuthorized
+│     └── when target selector granted
+│        ├── it should forward calldata to the target (with value)
+│        └── it should return the target's return data
+└── multi-call form
+   ├── when caller not authorized
+   │  └── it should revert with Unauthorized
+   ├── when target selector not granted to caller for any element
+   │  └── it should revert with TargetMethodNotAuthorized
+   └── when all target selectors granted
+      └── it should forward each calldata to the matching target

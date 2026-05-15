@@ -1,0 +1,22 @@
+ApproveToken_Integration_Concrete_Test
+├── when caller not authorized
+│  └── it should revert with Unauthorized
+└── when caller authorized
+   ├── given approval registry unset
+   │  └── it should revert with ApprovalRegistryUnset
+   └── given approval registry set
+      ├── when spender not allowlisted (cap zero)
+      │  └── it should revert with SpenderNotAllowed
+      └── when spender allowlisted
+         ├── when amount exceeds cap
+         │  └── it should revert with AmountExceedsCap
+         ├── when amount equals cap
+         │  ├── it should set allowance to cap
+         │  └── it should emit Approval
+         ├── when amount below cap
+         │  └── it should set allowance to amount
+         └── when amount zero
+            ├── given prior allowance
+            │  └── it should clear the allowance
+            └── given no prior allowance
+               └── it should be a no-op

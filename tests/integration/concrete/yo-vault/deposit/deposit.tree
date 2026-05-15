@@ -1,0 +1,4 @@
+Deposit_Integration_Concrete_Test
+└── when caller deposits assets at 1:1 oracle
+   ├── it should pull assets via transferFrom
+   └── it should mint shares equal to assets

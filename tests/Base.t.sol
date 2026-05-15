@@ -91,6 +91,8 @@ abstract contract Base_Test is Assertions, Modifiers {
         users.guardian = payable(makeAddr("Guardian"));
         users.vault = payable(makeAddr("Vault"));
         users.eve = payable(makeAddr("Eve"));
+        users.alice = payable(makeAddr("Alice"));
+        users.bob = payable(makeAddr("Bob"));
         defaults.setUsers(users);
         setUsersForModifiers(users);
 

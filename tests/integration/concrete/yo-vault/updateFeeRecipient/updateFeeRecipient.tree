@@ -1,0 +1,5 @@
+UpdateFeeRecipient_Integration_Concrete_Test
+├── when owner updates fee recipient
+│  └── it should update feeRecipient
+└── when caller not authorized
+   └── it should revert with Unauthorized

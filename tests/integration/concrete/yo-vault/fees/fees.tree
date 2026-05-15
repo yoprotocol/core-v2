@@ -1,0 +1,17 @@
+Fees_Integration_Concrete_Test
+├── when deposit then instant-redeem with both fees on
+│  ├── it should pay deposit fee to recipient on deposit
+│  └── it should pay withdraw fee to recipient on redeem
+├── when only deposit fee is on
+│  ├── it should pay deposit fee on deposit
+│  └── it should not pay any fee on redeem
+├── when only withdraw fee is on
+│  ├── it should not pay any fee on deposit
+│  └── it should pay withdraw fee on redeem
+├── when mint then instant-redeem with both fees on
+│  ├── it should pull (assets + raw-fee) on mint
+│  └── it should pay withdraw fee on redeem
+└── when redeem is async-fulfilled with both fees on
+   ├── it should accrue pending assets net of fees
+   ├── it should fully settle pending after fulfill
+   └── it should pay both fees to recipient by the end

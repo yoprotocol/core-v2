@@ -1,0 +1,7 @@
+IsAuthorized_Integration_Concrete_Test
+├── given caller is owner
+│  └── it should return true for any selector (shortcircuit)
+├── given caller granted by authority
+│  └── it should return true for the granted selector
+└── given caller has no grant
+   └── it should return false

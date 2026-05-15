@@ -1,0 +1,7 @@
+TotalAssets_Integration_Concrete_Test
+├── given no supply
+│  └── it should return zero
+├── given supply at 1:1 oracle
+│  └── it should equal supply
+└── given oracle price doubles after deposit
+   └── it should equal price * supply / 10^decimals

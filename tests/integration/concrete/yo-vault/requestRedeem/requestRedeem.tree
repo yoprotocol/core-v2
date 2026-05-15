@@ -1,0 +1,12 @@
+RequestRedeem_Integration_Concrete_Test
+├── when caller requests redeem with sufficient liquidity
+│  ├── it should burn shares (instant path)
+│  └── it should set totalAssets to zero
+├── when receiver is zero
+│  └── it should revert with ZeroReceiver
+├── when shares is zero
+│  └── it should revert with SharesAmountZero
+├── when caller is not the shares owner
+│  └── it should revert with NotSharesOwner
+└── when shares > owner balance
+   └── it should revert with InsufficientShares

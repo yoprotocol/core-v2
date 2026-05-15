@@ -13,4 +13,8 @@ struct Users {
     address payable vault;
     /// @dev Generic attacker / unauthorized caller.
     address payable eve;
+    /// @dev Depositor stand-in used by `YoVault` end-user tests.
+    address payable alice;
+    /// @dev Second party / fee recipient used by `YoVault` end-user tests.
+    address payable bob;
 }

@@ -1,0 +1,13 @@
+FulfillRedeem_Integration_Concrete_Test
+├── when owner fulfills full pending request
+│  ├── it should zero the pending entry
+│  ├── it should decrement totalPendingAssets
+│  └── it should release assets to the receiver
+├── when called twice for the same fully-fulfilled request
+│  └── it should revert with InvalidSharesAmount
+├── when shares argument exceeds pending shares
+│  └── it should revert with InvalidSharesAmount
+├── when assets argument exceeds pending assets
+│  └── it should revert with InvalidAssetsAmount
+└── when vault has insufficient asset balance
+   └── it should revert with ERC20 transfer failure

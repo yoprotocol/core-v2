@@ -1,0 +1,8 @@
+Unpause_Integration_Concrete_Test
+├── when caller not authorized
+│  └── it should revert with Unauthorized
+└── when caller authorized
+   ├── given vault not paused
+   │  └── it should revert with ExpectedPause from OZ Pausable
+   └── given vault paused
+      └── it should clear paused state

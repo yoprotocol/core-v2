@@ -1,0 +1,13 @@
+UpdateFee_Integration_Concrete_Test
+├── when owner updates deposit fee below MAX_FEE
+│  └── it should update feeOnDeposit
+├── when owner updates deposit fee to MAX_FEE
+│  └── it should revert with InvalidFee
+├── when caller not authorized updates deposit fee
+│  └── it should revert with Unauthorized
+├── when owner updates withdraw fee below MAX_FEE
+│  └── it should update feeOnWithdraw
+├── when owner updates withdraw fee to MAX_FEE
+│  └── it should revert with InvalidFee
+└── when caller not authorized updates withdraw fee
+   └── it should revert with Unauthorized

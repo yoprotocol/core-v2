@@ -1,0 +1,5 @@
+SetAuthority_Integration_Concrete_Test
+├── when caller not authorized
+│  └── it should revert with Unauthorized
+└── when caller authorized via current authority
+   └── it should replace the authority pointer

@@ -1,0 +1,11 @@
+CancelRedeem_Integration_Concrete_Test
+├── when owner cancels full pending request
+│  ├── it should restore the shares to the receiver
+│  ├── it should zero the pending entry
+│  └── it should decrement totalPendingAssets
+├── when shares argument exceeds pending shares
+│  └── it should revert with InvalidSharesAmount
+├── when assets argument exceeds pending assets
+│  └── it should revert with InvalidAssetsAmount
+└── when cancel is called twice
+   └── it should revert on the second call with InvalidSharesAmount
