@@ -1,0 +1,6 @@
+OracleAsset_Integration_Concrete_Test
+└── totalAssets prices via the yoUSD oracle entry
+   ├── given yoUSD oracle entry at 1e6
+   │  └── totalAssets equals totalSupply (1:1)
+   └── given yoUSD oracle entry doubled
+      └── totalAssets doubles

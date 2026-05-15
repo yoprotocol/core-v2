@@ -1,0 +1,6 @@
+Burn_Integration_Concrete_Test
+├── when owner burns own tokens
+│  ├── it should reduce totalSupply
+│  └── it should reduce owner balance
+└── when non-owner burns without auth grant
+   └── it should revert with Unauthorized (burn goes through _update)

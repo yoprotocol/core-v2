@@ -1,0 +1,9 @@
+Quotes_Integration_Concrete_Test
+├── when vault is allowed
+│  ├── quoteConvertToShares mirrors vault.convertToShares
+│  ├── quoteConvertToAssets mirrors vault.convertToAssets
+│  ├── quotePreviewDeposit mirrors vault.previewDeposit
+│  ├── quotePreviewRedeem mirrors vault.previewRedeem
+│  └── quotePreviewWithdraw mirrors vault.previewWithdraw
+└── when vault is NOT in registry
+   └── every quote method reverts with Gateway__VaultNotAllowed

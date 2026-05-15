@@ -1,0 +1,15 @@
+Deposit_Integration_Concrete_Test
+├── when caller deposits valid assets
+│  ├── it should transfer assets out of caller
+│  ├── it should mint shares to the receiver
+│  └── it should emit YoGatewayDeposit
+├── when receiver differs from caller
+│  └── it should still pull from caller and mint to receiver
+├── when assets is zero
+│  └── it should revert with Gateway__ZeroAmount
+├── when receiver is zero
+│  └── it should revert with Gateway__ZeroReceiver
+├── when target vault not in registry
+│  └── it should revert with Gateway__VaultNotAllowed
+└── when sharesOut below minSharesOut
+   └── it should revert with Gateway__InsufficientSharesOut

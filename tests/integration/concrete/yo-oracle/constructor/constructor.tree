@@ -1,0 +1,8 @@
+Constructor_Integration_Concrete_Test
+├── when constructed with valid args
+│  ├── it should set DEFAULT_WINDOW_SECONDS
+│  ├── it should set DEFAULT_MAX_CHANGE_BPS
+│  ├── it should set updater
+│  └── it should set owner to msg.sender
+└── when constructed with zero-address updater
+   └── it should revert with InvalidConfig

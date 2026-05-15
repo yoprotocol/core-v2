@@ -1,0 +1,8 @@
+Initialize_Integration_Concrete_Test
+├── when token initialized
+│  ├── it should set name, symbol, decimals
+│  └── it should mint 1B * 10**decimals to owner
+├── when initialize called twice
+│  └── it should revert with InvalidInitialization
+└── when called directly on implementation
+   └── it should revert (initializers disabled in constructor)

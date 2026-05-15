@@ -1,0 +1,10 @@
+AddYoVault_Integration_Concrete_Test
+├── when caller not authorized
+│  └── it should revert with Unauthorized
+├── when vault address is zero
+│  └── it should revert with Registry__VaultAddressZero
+├── when authorized caller adds a fresh vault
+│  ├── it should mark the vault registered
+│  └── it should emit YoVaultAdded(asset, vault)
+└── when adding a vault that already exists
+   └── it should revert with Registry__VaultAlreadyExists

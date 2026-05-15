@@ -1,0 +1,8 @@
+SetUpdater_Integration_Concrete_Test
+├── when owner sets a non-zero updater
+│  ├── it should update the stored updater
+│  └── it should emit UpdaterChanged
+├── when caller is not owner
+│  └── it should revert with OwnableUnauthorizedAccount
+└── when owner sets updater to zero address
+   └── it should revert with InvalidConfig

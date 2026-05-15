@@ -1,0 +1,7 @@
+Allowance_Integration_Concrete_Test
+├── given vault is allowlisted
+│  ├── getShareAllowance returns vault.allowance(owner, gateway)
+│  └── getAssetAllowance returns asset.allowance(owner, gateway)
+└── given vault not allowlisted
+   ├── getShareAllowance reverts with Gateway__VaultNotAllowed
+   └── getAssetAllowance reverts with Gateway__VaultNotAllowed

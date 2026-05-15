@@ -1,0 +1,11 @@
+Deposit_Integration_Concrete_Test
+├── when caller deposits with no fees configured
+│  ├── it should mint shares
+│  ├── it should relay 95% of assets to yoUSD address
+│  └── it should keep 5% of assets in the vault
+├── when caller deposits with deposit fee configured
+│  ├── it should mint net shares (after fee)
+│  ├── it should send fee to fee recipient
+│  └── it should relay 95% of net (post-fee) assets to yoUSD
+└── when caller deposits 0 wei
+   └── it should not relay anything (relayAmount = 0)

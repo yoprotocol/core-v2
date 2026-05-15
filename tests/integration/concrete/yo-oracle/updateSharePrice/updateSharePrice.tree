@@ -1,0 +1,14 @@
+UpdateSharePrice_Integration_Concrete_Test
+├── when caller is not the updater
+│  └── it should revert with NotUpdater
+├── when updater pushes the first price
+│  ├── it should set latest and anchor to the same value
+│  └── it should emit SharePriceUpdated
+├── when updater pushes within the default max-change window
+│  └── it should update latest price
+├── when updater pushes above the per-asset max-change limit
+│  └── it should revert with PriceChangeTooBig
+├── when window seconds elapse and updater pushes again
+│  └── it should rotate the anchor to the new price
+└── when prices are pushed for two different vaults
+   └── it should track them independently

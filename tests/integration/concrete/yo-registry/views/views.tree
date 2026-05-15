@@ -1,0 +1,11 @@
+Views_Integration_Concrete_Test
+├── isYoVault
+│  ├── given vault registered → returns true
+│  ├── given vault never registered → returns false
+│  ├── given vault registered then removed → returns false
+│  └── any caller can read (no auth)
+└── listYoVaults
+   ├── given empty registry → returns empty array
+   ├── given multiple vaults → returns all of them
+   ├── after remove of one → returns remaining
+   └── stays consistent with isYoVault

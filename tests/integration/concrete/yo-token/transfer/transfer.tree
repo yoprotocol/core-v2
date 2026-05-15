@@ -1,0 +1,11 @@
+Transfer_Integration_Concrete_Test
+├── when owner transfers
+│  └── it should move tokens (owner is requiresAuth-shortcircuit)
+├── when non-owner transfers without auth grant
+│  └── it should revert with Unauthorized
+├── when authority grants _update selector to a user
+│  └── that user should be able to transfer freely
+├── when owner uses transferFrom
+│  └── it should succeed under owner auth
+└── when non-owner with allowance uses transferFrom but no auth grant
+   └── it should revert with Unauthorized

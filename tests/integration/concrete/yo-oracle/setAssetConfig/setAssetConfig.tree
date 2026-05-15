@@ -1,0 +1,7 @@
+SetAssetConfig_Integration_Concrete_Test
+├── when owner writes config for an unconfigured vault
+│  ├── it should store windowSeconds and maxChangeBps
+│  ├── it should leave price fields zero
+│  └── it should emit AssetConfigUpdated
+└── when caller is not owner
+   └── it should revert with OwnableUnauthorizedAccount

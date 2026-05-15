@@ -1,0 +1,13 @@
+Redeem_Integration_Concrete_Test
+├── when redeem of owned shares (instant)
+│  ├── it should burn shares from owner
+│  ├── it should deliver assets to receiver
+│  └── it should emit YoGatewayRedeem with instant=true
+├── when shares is zero
+│  └── it should revert with Gateway__ZeroAmount
+├── when receiver is zero
+│  └── it should revert with Gateway__ZeroReceiver
+├── when vault not in registry
+│  └── it should revert with Gateway__VaultNotAllowed
+└── when instant assets out below minAssetsOut
+   └── it should revert with Gateway__InsufficientAssetsOut

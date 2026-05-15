@@ -1,0 +1,8 @@
+Initialize_Integration_Concrete_Test
+├── when initialize is called on the proxy
+│  ├── it should set owner to the supplied owner
+│  └── it should set authority to the supplied authority
+├── when initialize is called twice on the same proxy
+│  └── it should revert with InvalidInitialization
+└── when initialize is called directly on the implementation
+   └── it should revert (initializers disabled in constructor)
