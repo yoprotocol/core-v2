@@ -20,9 +20,6 @@ interface IYoERC4626Adapter {
     error VaultNotAllowed(IERC4626 yieldVault);
     error InvalidAmount();
     error NoPosition(IERC4626 yieldVault);
-    error NoShareDelta();
-    error LeftoverBalance(address token, uint256 amount);
-    error LeftoverAllowance(address token, uint256 amount);
 
     /// @notice Deposit `assets` of the yield-vault's underlying token into `yieldVault` on behalf of
     ///         the calling vault.

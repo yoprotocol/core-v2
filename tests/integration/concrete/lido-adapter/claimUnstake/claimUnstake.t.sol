@@ -31,6 +31,7 @@ contract ClaimUnstakeLidoIntegrationConcreteTest is Integration_Test {
         // Both eve and the vault have set approval-for-all on the adapter (see setUp + the eve block
         // above), so the adapter IS authorized to move eve's NFT — but `transferFrom(from=vault, ...)`
         // mismatches the actual owner (`eve`), tripping `ERC721IncorrectOwner` after _checkAuthorized.
+        vm.prank(users.vault);
         vm.expectPartialRevert(IERC721Errors.ERC721IncorrectOwner.selector);
         lidoAdapter.claimUnstake(eveRequestId);
     }

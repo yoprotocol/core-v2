@@ -41,10 +41,6 @@ contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
         address vault = _authorize(yieldVault);
 
         IERC20 asset = IERC20(yieldVault.asset());
-        uint256 sharesBefore = yieldVault.balanceOf(vault);
-        // Snapshot to tolerate pre-existing dust. Without this, any address could permanently DoS
-        // deposit by transferring 1 wei of `asset` to the adapter.
-        uint256 assetBalBefore = asset.balanceOf(address(this));
 
         asset.safeTransferFrom(vault, address(this), assets);
         asset.forceApprove(address(yieldVault), assets);
@@ -52,21 +48,6 @@ contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
         sharesReceived = yieldVault.deposit(assets, vault);
 
         asset.forceApprove(address(yieldVault), 0);
-
-        uint256 sharesAfter = yieldVault.balanceOf(vault);
-        if (sharesAfter <= sharesBefore) {
-            revert NoShareDelta();
-        }
-
-        // Delta check: the revert value is what *this* call leaked, not the absolute balance.
-        uint256 assetBalAfter = asset.balanceOf(address(this));
-        if (assetBalAfter != assetBalBefore) {
-            revert LeftoverBalance(address(asset), assetBalAfter - assetBalBefore);
-        }
-        uint256 leftoverAllow = asset.allowance(address(this), address(yieldVault));
-        if (leftoverAllow != 0) {
-            revert LeftoverAllowance(address(asset), leftoverAllow);
-        }
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -79,8 +60,6 @@ contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
             revert InvalidAmount();
         }
         address vault = _authorize(yieldVault);
-
-        // Adapter is caller; yield vault verifies allowance(vault, adapter) on shares.
         sharesBurned = yieldVault.withdraw(assets, vault, vault);
     }
 

@@ -60,9 +60,6 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
 
         IERC20 token = IERC20(p.loanToken);
         uint256 sharesBefore = morpho.position(marketId, vault).supplyShares;
-        // Snapshot to tolerate pre-existing dust. Without this, any address could permanently DoS
-        // supply by transferring 1 wei of `loanToken` to the adapter.
-        uint256 tokenBalBefore = token.balanceOf(address(this));
 
         token.safeTransferFrom(vault, address(this), assets);
         token.forceApprove(address(morpho), assets);
@@ -74,17 +71,6 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
         uint256 sharesAfter = morpho.position(marketId, vault).supplyShares;
         if (sharesAfter <= sharesBefore) {
             revert NoShareDelta();
-        }
-
-        // Delta check: the revert value is what *this* call leaked, not the absolute balance.
-        uint256 tokenBalAfter = token.balanceOf(address(this));
-        if (tokenBalAfter != tokenBalBefore) {
-            revert LeftoverBalance(p.loanToken, tokenBalAfter - tokenBalBefore);
-        }
-
-        uint256 leftoverAllow = token.allowance(address(this), address(morpho));
-        if (leftoverAllow != 0) {
-            revert LeftoverAllowance(p.loanToken, leftoverAllow);
         }
     }
 

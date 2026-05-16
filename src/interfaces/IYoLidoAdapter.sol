@@ -18,13 +18,9 @@ pragma solidity 0.8.34;
 ///         vault then calls `claimUnstake(requestId)` to redeem ETH (returned to the vault as WETH).
 interface IYoLidoAdapter {
     error InvalidAmount();
-    error NoShareDelta();
     error NoTransfer();
+    error NoShareDelta();
     error UnexpectedETH(address sender);
-    error LeftoverEth(uint256 amount);
-    error LeftoverBalance(address token, uint256 amount);
-    error LeftoverShares(uint256 shares);
-    error LeftoverAllowance(address token, uint256 amount);
 
     /// @notice Stake `wethAmount` of WETH for stETH on behalf of the calling vault.
     /// @dev    Adapter unwraps WETH → ETH → `Lido.submit` and forwards minted stETH to the vault.

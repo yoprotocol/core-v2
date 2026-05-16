@@ -66,4 +66,29 @@ contract DustDoS_LidoAdapter_Integration_Fuzz_Test is Integration_Test {
         assertEq(address(lidoAdapter).balance, ethDust, "ETH dust untouched");
         assertEq(IERC20(address(mockWETH)).balanceOf(address(lidoAdapter)), wethDust, "WETH dust untouched");
     }
+
+    /// @notice Regression for audit finding 2: `requestUnstake`'s dust sweep must only move the
+    ///         residual *this call* created, never pre-existing stETH share dust at the adapter.
+    ///         Pre-existing dust stays put and is recoverable only via `rescue`.
+    function testFuzz_PreExistingShareDust_DoesNotBlockRequestUnstake(uint256 dust, uint256 stakeAmount) external {
+        dust = bound(dust, 1, 1000 ether);
+        stakeAmount = bound(stakeAmount, 100, 50 ether);
+
+        // Adversary plants stETH share dust at the adapter (simulating pre-existing state — e.g.,
+        // bonus shares left by some prior misroute that hasn't been rescued yet).
+        mockStETH.mintForTest(address(lidoAdapter), dust);
+        uint256 sharesBefore = mockStETH.sharesOf(address(lidoAdapter));
+
+        // Registered vault has stETH and approves the adapter.
+        mockStETH.mintForTest(users.vault, stakeAmount * 2);
+        vm.prank(users.vault);
+        mockStETH.approve(address(lidoAdapter), type(uint256).max);
+
+        // Request unstake from vault.
+        vm.prank(users.vault);
+        lidoAdapter.requestUnstake(stakeAmount);
+
+        // Pre-existing dust shares are untouched — only the call's own residual gets swept.
+        assertEq(mockStETH.sharesOf(address(lidoAdapter)), sharesBefore, "pre-existing share dust untouched");
+    }
 }

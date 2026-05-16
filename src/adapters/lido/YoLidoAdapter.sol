@@ -65,10 +65,6 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
         address vault = msg.sender;
 
         IERC20 wethToken = IERC20(address(weth));
-        // Snapshot to tolerate pre-existing dust. Without these, any address could permanently DoS
-        // staking by selfdestructing 1 wei of ETH or transferring 1 wei of WETH to the adapter.
-        uint256 ethBalBefore = address(this).balance;
-        uint256 wethBalBefore = wethToken.balanceOf(address(this));
         uint256 stETHSharesBefore = stETH.sharesOf(address(this));
 
         wethToken.safeTransferFrom(vault, address(this), wethAmount);
@@ -88,20 +84,6 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
         if (stETHReceived == 0) {
             revert NoShareDelta();
         }
-
-        // Delta checks: revert values are the leak from *this* call, not absolute balances.
-        if (address(this).balance != ethBalBefore) {
-            revert LeftoverEth(address(this).balance - ethBalBefore);
-        }
-        uint256 wethBalAfter = wethToken.balanceOf(address(this));
-        if (wethBalAfter != wethBalBefore) {
-            revert LeftoverBalance(address(weth), wethBalAfter - wethBalBefore);
-        }
-        // `transferShares` is exact-in-shares; guard is paranoia, not load-bearing.
-        uint256 stETHSharesAfter = stETH.sharesOf(address(this));
-        if (stETHSharesAfter != stETHSharesBefore) {
-            revert LeftoverShares(stETHSharesAfter - stETHSharesBefore);
-        }
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -117,6 +99,7 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
         IERC20 stETHToken = IERC20(address(stETH));
 
         uint256 adapterBalBefore = stETHToken.balanceOf(address(this));
+        uint256 sharesBefore = stETH.sharesOf(address(this));
         stETHToken.safeTransferFrom(vault, address(this), stETHAmount);
 
         // Use the actual pulled balance (handles Lido's 1-2 wei rebasing rounding).
@@ -134,22 +117,9 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
 
         stETHToken.forceApprove(address(withdrawalQueue), 0);
 
-        // The queue pulled `received` (a balance amount) via `transferFrom`, which converts to
-        // shares via floor division. The 1-2 wei share residual documented by Lido is swept to
-        // the vault via the share-exact `transferShares` so nothing dusts in the adapter.
-        uint256 dustShares = stETH.sharesOf(address(this));
-        if (dustShares != 0) {
-            stETH.transferShares(vault, dustShares);
-        }
-
-        // Strict post-condition: adapter is clean.
-        uint256 leftoverShares = stETH.sharesOf(address(this));
-        if (leftoverShares != 0) {
-            revert LeftoverShares(leftoverShares);
-        }
-        uint256 leftoverAllow = stETHToken.allowance(address(this), address(withdrawalQueue));
-        if (leftoverAllow != 0) {
-            revert LeftoverAllowance(address(stETH), leftoverAllow);
+        uint256 sharesAfter = stETH.sharesOf(address(this));
+        if (sharesAfter > sharesBefore) {
+            stETH.transferShares(vault, sharesAfter - sharesBefore);
         }
     }
 
@@ -162,10 +132,7 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
         address vault = msg.sender;
         IERC20 wethToken = IERC20(address(weth));
 
-        // Snapshot to tolerate pre-existing dust. Without these, any address could permanently DoS
-        // claims by selfdestructing 1 wei of ETH or transferring 1 wei of WETH to the adapter.
         uint256 ethBalBefore = address(this).balance;
-        uint256 wethBalBefore = wethToken.balanceOf(address(this));
 
         // Pull NFT from the vault. Vault must have set approval-for-all on the adapter at onboarding.
         withdrawalQueue.transferFrom(vault, address(this), requestId);
@@ -180,14 +147,5 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
         weth.deposit{ value: ethReceived }();
         wethToken.safeTransfer(vault, ethReceived);
         wethReceived = ethReceived;
-
-        // Delta checks: revert values are the leak from *this* call, not absolute balances.
-        if (address(this).balance != ethBalBefore) {
-            revert LeftoverEth(address(this).balance - ethBalBefore);
-        }
-        uint256 wethBalAfter = wethToken.balanceOf(address(this));
-        if (wethBalAfter != wethBalBefore) {
-            revert LeftoverBalance(address(weth), wethBalAfter - wethBalBefore);
-        }
     }
 }

@@ -10,8 +10,6 @@ interface IYoMorphoAdapter {
     error NoPosition(Id id);
     error InvalidAmount();
     error NoShareDelta();
-    error LeftoverBalance(address token, uint256 amount);
-    error LeftoverAllowance(address token, uint256 amount);
 
     function supply(Id marketId, uint256 assets) external returns (uint256 assetsSupplied, uint256 sharesSupplied);
 

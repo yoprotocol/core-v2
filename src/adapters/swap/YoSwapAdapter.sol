@@ -114,9 +114,5 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         if (inBalAfter != inBalBefore) {
             revert LeftoverInput(tokenIn, inBalAfter - inBalBefore);
         }
-        uint256 leftoverAllow = inToken.allowance(address(this), aggregator);
-        if (leftoverAllow != 0) {
-            revert LeftoverAllowance(tokenIn, leftoverAllow);
-        }
     }
 }

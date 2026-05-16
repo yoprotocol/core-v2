@@ -47,13 +47,20 @@ abstract contract YoAdapterBase is ReentrancyGuard {
         yoRegistry = _yoRegistry;
     }
 
-    /// @notice Sweep this adapter's full balance of `token` to the calling vault. Callable only by
-    ///         a currently-registered YO vault.
-    /// @return amount The token balance transferred.
-    function rescue(IERC20 token) external nonReentrant returns (uint256 amount) {
+    /// @dev Restricts the caller to a currently-registered YO vault. Applied to `rescue` /
+    ///      `rescueETH`; child adapters' per-protocol methods are gated by their own allowlists
+    ///      and do not use this modifier.
+    modifier onlyYoVault() {
         if (!yoRegistry.isYoVault(msg.sender)) {
             revert CallerNotYoVault(msg.sender);
         }
+        _;
+    }
+
+    /// @notice Sweep this adapter's full balance of `token` to the calling vault. Callable only by
+    ///         a currently-registered YO vault.
+    /// @return amount The token balance transferred.
+    function rescue(IERC20 token) external nonReentrant onlyYoVault returns (uint256 amount) {
         amount = token.balanceOf(address(this));
         if (amount != 0) {
             token.safeTransfer(msg.sender, amount);
@@ -64,10 +71,7 @@ abstract contract YoAdapterBase is ReentrancyGuard {
     /// @notice Sweep this adapter's full ETH balance to the calling vault. Callable only by a
     ///         currently-registered YO vault.
     /// @return amount The ETH amount transferred.
-    function rescueETH() external nonReentrant returns (uint256 amount) {
-        if (!yoRegistry.isYoVault(msg.sender)) {
-            revert CallerNotYoVault(msg.sender);
-        }
+    function rescueETH() external nonReentrant onlyYoVault returns (uint256 amount) {
         amount = address(this).balance;
         if (amount != 0) {
             (bool ok,) = payable(msg.sender).call{ value: amount }("");

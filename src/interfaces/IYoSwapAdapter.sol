@@ -9,9 +9,7 @@ interface IYoSwapAdapter {
     error InvalidAmount();
     error SlippageTooLow(uint256 minOut, uint256 floor);
     error InsufficientOutput(uint256 received, uint256 minOut);
-    error AggregatorCallFailed(bytes returnData);
     error LeftoverInput(address token, uint256 amount);
-    error LeftoverAllowance(address token, uint256 amount);
 
     function swap(
         address tokenIn,
