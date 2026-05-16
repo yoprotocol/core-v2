@@ -16,12 +16,15 @@ import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.so
 import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
 import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
 import { YoERC4626Adapter } from "src/adapters/erc4626/YoERC4626Adapter.sol";
+import { YoIPORAdapter } from "src/adapters/ipor/YoIPORAdapter.sol";
 import { YoLidoAdapter } from "src/adapters/lido/YoLidoAdapter.sol";
 import { YoMorphoAdapter } from "src/adapters/morpho/YoMorphoAdapter.sol";
 import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
 
 import { MockERC20 } from "./mocks/MockERC20.sol";
 import { MockERC4626 } from "./mocks/MockERC4626.sol";
+import { MockIIPORPlasmaVault } from "./mocks/MockIIPORPlasmaVault.sol";
+import { MockIIPORWithdrawManager } from "./mocks/MockIIPORWithdrawManager.sol";
 import { MockLidoWithdrawalQueue } from "./mocks/MockLidoWithdrawalQueue.sol";
 import { MockMorpho } from "./mocks/MockMorpho.sol";
 import { MockOneInchRouter } from "./mocks/MockOneInchRouter.sol";
@@ -58,6 +61,8 @@ abstract contract Base_Test is Assertions, Modifiers {
     MockOneInchRouter internal mockAggregator;
     MockSwapOracle internal mockOracle;
     MockERC4626 internal mockYieldVault;
+    MockIIPORPlasmaVault internal mockPlasmaVault;
+    MockIIPORWithdrawManager internal mockIPORWithdrawManager;
     MockWETH9 internal mockWETH;
     MockStETH internal mockStETH;
     MockLidoWithdrawalQueue internal mockLidoQueue;
@@ -71,6 +76,7 @@ abstract contract Base_Test is Assertions, Modifiers {
     YoMorphoAdapter internal morphoAdapter;
     YoSwapAdapter internal swapAdapter;
     YoERC4626Adapter internal yieldAdapter;
+    YoIPORAdapter internal iporAdapter;
     YoLidoAdapter internal lidoAdapter;
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -104,6 +110,10 @@ abstract contract Base_Test is Assertions, Modifiers {
         mockAggregator = new MockOneInchRouter();
         mockOracle = new MockSwapOracle();
         mockYieldVault = new MockERC4626(IERC20(address(usdc)), "Mock Yield Vault", "mYV");
+        mockIPORWithdrawManager = new MockIIPORWithdrawManager(defaults.IPOR_WITHDRAW_WINDOW());
+        mockPlasmaVault = new MockIIPORPlasmaVault(
+            IERC20(address(usdc)), "Mock Plasma Vault", "mPV", mockIPORWithdrawManager
+        );
         mockWETH = new MockWETH9();
         mockStETH = new MockStETH();
         mockLidoQueue = new MockLidoWithdrawalQueue(IERC20(address(mockStETH)));
@@ -112,6 +122,8 @@ abstract contract Base_Test is Assertions, Modifiers {
         vm.label(address(mockAggregator), "MockOneInchRouter");
         vm.label(address(mockOracle), "MockSwapOracle");
         vm.label(address(mockYieldVault), "MockERC4626");
+        vm.label(address(mockPlasmaVault), "MockIIPORPlasmaVault");
+        vm.label(address(mockIPORWithdrawManager), "MockIIPORWithdrawManager");
         vm.label(address(mockWETH), "MockWETH9");
         vm.label(address(mockStETH), "MockStETH");
         vm.label(address(mockLidoQueue), "MockLidoWithdrawalQueue");
@@ -137,6 +149,7 @@ abstract contract Base_Test is Assertions, Modifiers {
             _yoRegistry: yoRegistry
         });
         yieldAdapter = new YoERC4626Adapter(yieldVaultRegistry, yoRegistry);
+        iporAdapter = new YoIPORAdapter(yieldVaultRegistry, yoRegistry);
         lidoAdapter = new YoLidoAdapter({
             _stETH: IStETH(address(mockStETH)),
             _queue: IWithdrawalQueueERC721(address(mockLidoQueue)),
@@ -153,6 +166,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         vm.label(address(morphoAdapter), "YoMorphoAdapter");
         vm.label(address(swapAdapter), "YoSwapAdapter");
         vm.label(address(yieldAdapter), "YoERC4626Adapter");
+        vm.label(address(iporAdapter), "YoIPORAdapter");
         vm.label(address(lidoAdapter), "YoLidoAdapter");
 
         // Warp to a deterministic timestamp.

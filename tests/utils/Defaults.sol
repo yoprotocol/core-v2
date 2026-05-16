@@ -36,6 +36,12 @@ contract Defaults {
     // ---------------------- TIME ----------------------
     uint256 public constant FEB_1_2025 = 1_738_368_000;
 
+    // ---------------------- IPOR ----------------------
+    /// @dev Default claim-window length on the mock IPOR WithdrawManager. Real Fusion vaults set
+    ///      this per-vault on the order of hours-to-days; the tests just need a value large enough
+    ///      to advance the EVM clock past it.
+    uint32 public constant IPOR_WITHDRAW_WINDOW = 1 hours;
+
     // ---------------------- USERS ----------------------
     Users private _users;
 

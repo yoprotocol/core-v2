@@ -24,16 +24,21 @@ abstract contract Integration_Test is Base_Test {
         usdc.mint(users.vault, 1_000_000e6);
         usdt.mint(users.vault, 1_000_000e6);
 
-        // Default yield-vault allowlist + USDC approvals.
+        // Default yield-vault allowlist + USDC approvals. The IPOR PlasmaVault reuses the shared
+        // ERC-4626 vault registry.
         _allowYieldVault(users.vault, mockYieldVault);
+        _allowYieldVault(users.vault, mockPlasmaVault);
 
         // Vault pre-approves all adapters so they can pull tokens / shares as needed.
         vm.startPrank(users.vault);
         usdc.approve(address(morphoAdapter), type(uint256).max);
         usdc.approve(address(swapAdapter), type(uint256).max);
         usdc.approve(address(yieldAdapter), type(uint256).max);
+        usdc.approve(address(iporAdapter), type(uint256).max);
         // Share approval for withdraw paths: vault authorizes adapter on the yield vault's shares.
         mockYieldVault.approve(address(yieldAdapter), type(uint256).max);
+        // IPOR claim path: vault authorizes the IPOR adapter on the PlasmaVault's shares.
+        mockPlasmaVault.approve(address(iporAdapter), type(uint256).max);
         // Morpho authorization for the Morpho adapter (different mechanism: setAuthorization).
         mockMorpho.setAuthorization(address(morphoAdapter), true);
         // Lido adapter: vault approves WETH (stake), stETH (unstake request), and the withdrawal
