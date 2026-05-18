@@ -54,13 +54,10 @@ contract MockIIPORWithdrawManager is IIPORWithdrawManager {
         // Single SLOAD: the struct (uint128 + uint32 + bool + uint32) packs into one slot.
         WithdrawRequestInfo memory r = _requests[owner];
 
-        uint256 requestTimestamp =
-            uint256(r.endWithdrawWindowTimestamp) - uint256(r.withdrawWindowInSeconds);
+        uint256 requestTimestamp = uint256(r.endWithdrawWindowTimestamp) - uint256(r.withdrawWindowInSeconds);
 
-        bool ok = r.shares >= shares
-            && block.timestamp >= requestTimestamp
-            && block.timestamp <= r.endWithdrawWindowTimestamp
-            && requestTimestamp < lastReleaseFundsTimestamp
+        bool ok = r.shares >= shares && block.timestamp >= requestTimestamp
+            && block.timestamp <= r.endWithdrawWindowTimestamp && requestTimestamp < lastReleaseFundsTimestamp
             && sharesToRelease >= shares;
 
         if (!ok) {

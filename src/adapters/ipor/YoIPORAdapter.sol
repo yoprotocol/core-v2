@@ -64,10 +64,7 @@ contract YoIPORAdapter is YoAdapterBase, IYoIPORAdapter {
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IYoIPORAdapter
-    function claim(
-        IIPORPlasmaVault plasmaVault,
-        uint256 shares
-    )
+    function claim(IIPORPlasmaVault plasmaVault, uint256 shares)
         external
         nonReentrant
         returns (uint256 assetsReceived)

@@ -111,9 +111,8 @@ abstract contract Base_Test is Assertions, Modifiers {
         mockOracle = new MockSwapOracle();
         mockYieldVault = new MockERC4626(IERC20(address(usdc)), "Mock Yield Vault", "mYV");
         mockIPORWithdrawManager = new MockIIPORWithdrawManager(defaults.IPOR_WITHDRAW_WINDOW());
-        mockPlasmaVault = new MockIIPORPlasmaVault(
-            IERC20(address(usdc)), "Mock Plasma Vault", "mPV", mockIPORWithdrawManager
-        );
+        mockPlasmaVault =
+            new MockIIPORPlasmaVault(IERC20(address(usdc)), "Mock Plasma Vault", "mPV", mockIPORWithdrawManager);
         mockWETH = new MockWETH9();
         mockStETH = new MockStETH();
         mockLidoQueue = new MockLidoWithdrawalQueue(IERC20(address(mockStETH)));

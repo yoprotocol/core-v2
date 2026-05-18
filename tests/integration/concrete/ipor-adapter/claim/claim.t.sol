@@ -11,7 +11,7 @@ import { MockIIPORWithdrawManager } from "../../../../mocks/MockIIPORWithdrawMan
 import { Integration_Test } from "../../../Integration.t.sol";
 
 contract ClaimIPORIntegrationConcreteTest is Integration_Test {
-    uint256 internal constant SHARES = 5_000e6;
+    uint256 internal constant SHARES = 5000e6;
 
     function _seedPosition(uint256 assets) internal returns (uint256 shares) {
         vm.prank(users.vault);
