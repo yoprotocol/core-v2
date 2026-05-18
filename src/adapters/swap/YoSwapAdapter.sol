@@ -89,9 +89,6 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         IERC20 inToken = IERC20(tokenIn);
         IERC20 outToken = IERC20(tokenOut);
         uint256 vaultOutBefore = outToken.balanceOf(vault);
-        // Snapshot to tolerate pre-existing dust. Without this, any address could permanently DoS
-        // swaps for a given `tokenIn` by transferring 1 wei to the adapter.
-        uint256 inBalBefore = inToken.balanceOf(address(this));
 
         inToken.safeTransferFrom(vault, address(this), amountIn);
         inToken.forceApprove(aggregator, amountIn);
@@ -109,10 +106,5 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         }
 
         inToken.forceApprove(aggregator, 0);
-        // Delta check: the revert value is what *this* call leaked, not the absolute balance.
-        uint256 inBalAfter = inToken.balanceOf(address(this));
-        if (inBalAfter != inBalBefore) {
-            revert LeftoverInput(tokenIn, inBalAfter - inBalBefore);
-        }
     }
 }

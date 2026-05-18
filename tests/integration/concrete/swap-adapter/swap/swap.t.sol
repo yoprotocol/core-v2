@@ -138,23 +138,6 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
     }
 
-    function test_RevertGiven_LeftoverInput()
-        external
-        whenCallerVault
-        whenAmountNotZero
-        whenPairAllowed
-        whenOracleQuoteAvailable
-    {
-        // Configure the aggregator NOT to pull `tokenIn`. The adapter pre-approved the aggregator
-        // and pulled funds from the vault, so on return there's leftover `tokenIn` in the adapter.
-        mockAggregator.setConsumeAllowance(false);
-        uint256 amountIn = defaults.SWAP_AMOUNT_IN();
-        _armAggregator(amountIn, address(swapAdapter));
-
-        vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.LeftoverInput.selector, address(usdc), amountIn));
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
-    }
-
     /*//////////////////////////////////////////////////////////////////////////
                                    HAPPY-PATH
     //////////////////////////////////////////////////////////////////////////*/

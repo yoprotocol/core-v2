@@ -24,8 +24,6 @@ Swap_Integration_Concrete_Test
                   └── when aggregator call succeeds
                      ├── given output below minOut
                      │  └── it should revert with InsufficientOutput
-                     ├── given aggregator leaves leftover input in adapter
-                     │  └── it should revert with LeftoverInput
                      └── given clean output
                         ├── it should pull amountIn from vault
                         ├── it should sweep adapter tokenOut to vault
