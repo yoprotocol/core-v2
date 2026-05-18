@@ -14,6 +14,7 @@ import { IYoSwapOracle } from "../src/interfaces/IYoSwapOracle.sol";
 import { IYoSwapPairRegistry } from "../src/interfaces/IYoSwapPairRegistry.sol";
 
 import { YoERC4626Adapter } from "../src/adapters/erc4626/YoERC4626Adapter.sol";
+import { YoIPORAdapter } from "../src/adapters/ipor/YoIPORAdapter.sol";
 import { YoLidoAdapter } from "../src/adapters/lido/YoLidoAdapter.sol";
 import { YoMorphoAdapter } from "../src/adapters/morpho/YoMorphoAdapter.sol";
 import { YoSwapAdapter } from "../src/adapters/swap/YoSwapAdapter.sol";
@@ -28,7 +29,7 @@ import { YoChainlinkOracle } from "../src/oracles/YoChainlinkOracle.sol";
 import { BaseScript } from "./Base.s.sol";
 
 /// @notice Deploys the YO V3 operator-safety stack — four non-upgradeable registries, the
-///         Chainlink-backed swap oracle, and four adapters (Morpho / Swap / ERC4626 / Lido).
+///         Chainlink-backed swap oracle, and five adapters (Morpho / Swap / ERC4626 / IPOR / Lido).
 ///         All contracts are deployed via deterministic CREATE2 with a chain+version-scoped salt
 ///         so addresses are reproducible across chains.
 ///
@@ -57,6 +58,7 @@ contract Deploy_V3_Stack is BaseScript {
         YoMorphoAdapter morphoAdapter;
         YoSwapAdapter swapAdapter;
         YoERC4626Adapter erc4626Adapter;
+        YoIPORAdapter iporAdapter;
         YoLidoAdapter lidoAdapter; // address(0) on non-mainnet chains
     }
 
@@ -86,6 +88,9 @@ contract Deploy_V3_Stack is BaseScript {
 
         d.erc4626Adapter =
             new YoERC4626Adapter{ salt: SALT }(IYoERC4626VaultRegistry(address(d.yieldVaultRegistry)), yoRegistry);
+
+        d.iporAdapter =
+            new YoIPORAdapter{ salt: SALT }(IYoERC4626VaultRegistry(address(d.yieldVaultRegistry)), yoRegistry);
 
         if (lidoSupported) {
             d.lidoAdapter = new YoLidoAdapter{ salt: SALT }({
@@ -118,6 +123,7 @@ contract Deploy_V3_Stack is BaseScript {
         console2.log("YoMorphoAdapter:        ", address(d.morphoAdapter));
         console2.log("YoSwapAdapter:          ", address(d.swapAdapter));
         console2.log("YoERC4626Adapter:       ", address(d.erc4626Adapter));
+        console2.log("YoIPORAdapter:          ", address(d.iporAdapter));
         if (lidoSupported) {
             console2.log("YoLidoAdapter:          ", address(d.lidoAdapter));
         } else {
