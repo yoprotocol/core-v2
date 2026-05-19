@@ -22,6 +22,15 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
     using SafeERC20 for IERC20;
 
+    /// @notice Vault-level Morpho audit log. Replaces the generic `AdapterAction` for Morpho
+    ///         because the Morpho Blue router is a singleton across all markets — the `marketId`
+    ///         is the discriminator, not the target address.
+    /// @param  vault     The calling YO vault (always `msg.sender`).
+    /// @param  marketId  Morpho Blue market identifier.
+    /// @param  direction `Deposit` for supply, `Withdraw` for withdraw / withdrawAll.
+    /// @param  amount    Assets supplied or withdrawn.
+    event MorphoMarketAction(address indexed vault, Id indexed marketId, AdapterDirection direction, uint256 amount);
+
     IMorpho public immutable morpho;
     IYoMorphoMarketRegistry public immutable registry;
 
@@ -73,7 +82,7 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
             revert NoShareDelta();
         }
 
-        _emitAction(address(morpho), p.loanToken, AdapterDirection.Deposit, assetsSupplied);
+        emit MorphoMarketAction(vault, marketId, AdapterDirection.Deposit, assetsSupplied);
     }
 
     /// @inheritdoc IYoMorphoAdapter
@@ -100,7 +109,7 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
 
         (assetsWithdrawn, sharesBurned) = morpho.withdraw(p, assets, 0, vault, vault);
 
-        _emitAction(address(morpho), p.loanToken, AdapterDirection.Withdraw, assetsWithdrawn);
+        emit MorphoMarketAction(vault, marketId, AdapterDirection.Withdraw, assetsWithdrawn);
     }
 
     /// @inheritdoc IYoMorphoAdapter
@@ -122,6 +131,6 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
 
         (assetsWithdrawn, sharesBurned) = morpho.withdraw(p, 0, shares, vault, vault);
 
-        _emitAction(address(morpho), p.loanToken, AdapterDirection.Withdraw, assetsWithdrawn);
+        emit MorphoMarketAction(vault, marketId, AdapterDirection.Withdraw, assetsWithdrawn);
     }
 }

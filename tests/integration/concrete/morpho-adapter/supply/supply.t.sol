@@ -4,6 +4,7 @@ pragma solidity 0.8.34;
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
+import { YoMorphoAdapter } from "src/adapters/morpho/YoMorphoAdapter.sol";
 import { Id } from "src/interfaces/IMorpho.sol";
 import { IYoMorphoAdapter } from "src/interfaces/IYoMorphoAdapter.sol";
 
@@ -118,17 +119,11 @@ contract SupplyIntegrationConcreteTest is Integration_Test {
         assertZeroAllowance(address(usdc), address(morphoAdapter), address(mockMorpho));
     }
 
-    function test_EmitsAdapterAction() external whenCallerVault whenAmountNotZero whenMarketAllowed {
+    function test_EmitsMorphoMarketAction() external whenCallerVault whenAmountNotZero whenMarketAllowed {
         Id m = defaults.MARKET_A();
         uint256 amount = defaults.SUPPLY_AMOUNT();
-        vm.expectEmit(true, true, true, true, address(morphoAdapter));
-        emit YoAdapterBase.AdapterAction(
-            users.vault,
-            address(mockMorpho),
-            address(usdc),
-            YoAdapterBase.AdapterDirection.Deposit,
-            amount
-        );
+        vm.expectEmit(true, true, false, true, address(morphoAdapter));
+        emit YoMorphoAdapter.MorphoMarketAction(users.vault, m, YoAdapterBase.AdapterDirection.Deposit, amount);
         morphoAdapter.supply(m, amount);
     }
 }
