@@ -4,11 +4,11 @@ pragma solidity 0.8.34;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IYoRegistry } from "./../../interfaces/IYoRegistry.sol";
 import { IYoSwapAdapter } from "./../../interfaces/IYoSwapAdapter.sol";
 import { IYoSwapOracle } from "./../../interfaces/IYoSwapOracle.sol";
 import { IYoSwapPairRegistry } from "./../../interfaces/IYoSwapPairRegistry.sol";
-import { IYoRegistry } from "./../../interfaces/IYoRegistry.sol";
-import { YoAdapterBase } from "../base/YoAdapterBase.sol";
+import { YoAdapterBase } from "./../base/YoAdapterBase.sol";
 
 /// @title  YoSwapAdapter
 /// @notice Generic immutable swap adapter for **synchronous, approve-based aggregators**: 1inch v5/v6,
@@ -58,12 +58,16 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         address tokenOut,
         uint256 amountIn,
         uint256 minOut,
+        uint256 deadline,
         bytes calldata aggregatorCalldata
     )
         external
         nonReentrant
         returns (uint256 amountOut)
     {
+        if (block.timestamp > deadline) {
+            revert DeadlineExpired(deadline, block.timestamp);
+        }
         if (amountIn == 0) {
             revert InvalidAmount();
         }

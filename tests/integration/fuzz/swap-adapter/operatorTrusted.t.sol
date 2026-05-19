@@ -7,7 +7,7 @@ import { IYoSwapPairRegistry } from "src/interfaces/IYoSwapPairRegistry.sol";
 import { MockOneInchRouter } from "../../../mocks/MockOneInchRouter.sol";
 import { Integration_Test } from "../../Integration.t.sol";
 
-contract OperatorTrusted_SwapAdapter_Integration_Fuzz_Test is Integration_Test {
+contract OperatorTrustedSwapAdapterIntegrationFuzzTest is Integration_Test {
     function _execCalldata(uint256 amountIn) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(MockOneInchRouter.execute.selector, amountIn);
     }
@@ -29,12 +29,13 @@ contract OperatorTrusted_SwapAdapter_Integration_Fuzz_Test is Integration_Test {
         if (minOut > amountIn) {
             vm.prank(users.vault);
             vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, amountIn, minOut));
-            swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, _execCalldata(amountIn));
+            swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, type(uint256).max, _execCalldata(amountIn));
         } else {
             uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
             vm.prank(users.vault);
-            uint256 amountOut =
-                swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, _execCalldata(amountIn));
+            uint256 amountOut = swapAdapter.swap(
+                address(usdc), address(usdt), amountIn, minOut, type(uint256).max, _execCalldata(amountIn)
+            );
             assertGe(amountOut, minOut);
             assertEq(usdt.balanceOf(users.vault), vaultUsdtBefore + amountIn);
         }

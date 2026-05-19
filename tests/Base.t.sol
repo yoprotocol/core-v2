@@ -3,24 +3,21 @@ pragma solidity 0.8.34;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
-import { IStETH } from "src/interfaces/external/IStETH.sol";
-import { IWETH9 } from "src/interfaces/external/IWETH9.sol";
-import { IWithdrawalQueueERC721 } from "src/interfaces/external/IWithdrawalQueueERC721.sol";
-import { IYoSwapOracle } from "src/interfaces/IYoSwapOracle.sol";
-import { IYoSwapPairRegistry } from "src/interfaces/IYoSwapPairRegistry.sol";
-
-import { YoApprovalRegistry } from "src/registries/YoApprovalRegistry.sol";
-import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.sol";
-import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
-import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
 import { YoERC4626Adapter } from "src/adapters/erc4626/YoERC4626Adapter.sol";
 import { YoIPORAdapter } from "src/adapters/ipor/YoIPORAdapter.sol";
 import { YoLidoAdapter } from "src/adapters/lido/YoLidoAdapter.sol";
 import { YoMorphoAdapter } from "src/adapters/morpho/YoMorphoAdapter.sol";
 import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
-
+import { IStETH } from "src/interfaces/external/IStETH.sol";
+import { IWETH9 } from "src/interfaces/external/IWETH9.sol";
+import { IWithdrawalQueueERC721 } from "src/interfaces/external/IWithdrawalQueueERC721.sol";
+import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
+import { IYoSwapOracle } from "src/interfaces/IYoSwapOracle.sol";
+import { IYoSwapPairRegistry } from "src/interfaces/IYoSwapPairRegistry.sol";
+import { YoApprovalRegistry } from "src/registries/YoApprovalRegistry.sol";
+import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.sol";
+import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
+import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
 import { MockERC4626 } from "./mocks/MockERC4626.sol";
 import { MockIIPORPlasmaVault } from "./mocks/MockIIPORPlasmaVault.sol";
@@ -32,13 +29,13 @@ import { MockStETH } from "./mocks/MockStETH.sol";
 import { MockSwapOracle } from "./mocks/MockSwapOracle.sol";
 import { MockWETH9 } from "./mocks/MockWETH9.sol";
 import { MockYoRegistry } from "./mocks/MockYoRegistry.sol";
-
 import { Assertions } from "./utils/Assertions.sol";
 import { Defaults } from "./utils/Defaults.sol";
 import { Modifiers } from "./utils/Modifiers.sol";
 import { Users } from "./utils/Types.sol";
 
 /// @notice Top-level base for the v3 operator-safety test suite.
+// solhint-disable-next-line contract-name-capwords
 abstract contract Base_Test is Assertions, Modifiers {
     /*//////////////////////////////////////////////////////////////////////////
                                      VARIABLES

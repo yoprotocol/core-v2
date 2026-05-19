@@ -49,4 +49,14 @@ contract GetPriceUSDIntegrationConcreteTest is ChainlinkOracleBase_Test {
         vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.StalePrice.selector, address(usdc)));
         oracle.getPriceUSD(address(usdc));
     }
+
+    function test_RevertGiven_AnsweredInRoundLessThanRoundId() external {
+        _configure(address(usdc), address(usdcFeed), 1 hours);
+        usdcFeed.setPrice(1e8); // bumps roundId to >= 2
+        // Pin answeredInRound to a value strictly less than roundId — a round that did not reach
+        // Chainlink consensus.
+        usdcFeed.setAnsweredInRound(uint80(usdcFeed.roundId() - 1));
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.StalePrice.selector, address(usdc)));
+        oracle.getPriceUSD(address(usdc));
+    }
 }

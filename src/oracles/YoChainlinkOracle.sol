@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
-
-import { IAggregatorV3 } from "../interfaces/external/IAggregatorV3.sol";
-import { IYoSwapOracle } from "../interfaces/IYoSwapOracle.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IAggregatorV3 } from "./../interfaces/external/IAggregatorV3.sol";
+import { IYoSwapOracle } from "./../interfaces/IYoSwapOracle.sol";
 
 /// @title  YoChainlinkOracle
 /// @notice `IYoSwapOracle` implementation backed by Chainlink USD aggregators. Each asset is
@@ -144,9 +143,14 @@ contract YoChainlinkOracle is Ownable2Step, IYoSwapOracle {
     //////////////////////////////////////////////////////////////////////////*/
 
     function _price(address asset, AssetConfig memory cfg) internal view returns (uint256) {
-        (, int256 answer,, uint256 updatedAt,) = IAggregatorV3(cfg.feed).latestRoundData();
+        (uint80 roundId, int256 answer,, uint256 updatedAt, uint80 answeredInRound) =
+            IAggregatorV3(cfg.feed).latestRoundData();
         if (answer <= 0) {
             revert InvalidPrice(asset);
+        }
+        // Reject prices from rounds that did not reach Chainlink consensus.
+        if (answeredInRound < roundId) {
+            revert StalePrice(asset);
         }
         // Forward-skewed `updatedAt` would otherwise underflow the subtraction; fail closed.
         if (updatedAt > block.timestamp || block.timestamp - updatedAt > cfg.heartbeat) {

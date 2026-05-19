@@ -8,5 +8,7 @@ GetPriceUSD_Integration_Concrete_Test
    │  └── it should return the 1e18-scaled price
    ├── when feed staler than heartbeat
    │  └── it should revert with StalePrice
-   └── when feed updated in future
+   ├── when feed updated in future
+   │  └── it should revert with StalePrice
+   └── when answeredInRound less than roundId
       └── it should revert with StalePrice

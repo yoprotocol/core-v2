@@ -9,12 +9,14 @@ interface IYoSwapAdapter {
     error InvalidAmount();
     error SlippageTooLow(uint256 minOut, uint256 floor);
     error InsufficientOutput(uint256 received, uint256 minOut);
+    error DeadlineExpired(uint256 deadline, uint256 nowTs);
 
     function swap(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
         uint256 minOut,
+        uint256 deadline,
         bytes calldata aggregatorCalldata
     )
         external

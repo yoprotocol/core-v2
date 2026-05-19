@@ -53,6 +53,7 @@ contract SwapAdapterHandler is Test {
             address(tokenOut),
             amountIn,
             expectedOut,
+            type(uint256).max,
             abi.encodeWithSelector(MockOneInchRouter.execute.selector, amountIn)
         ) returns (
             uint256 out

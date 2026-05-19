@@ -10,7 +10,7 @@ import { MockOneInchRouter } from "../../../../mocks/MockOneInchRouter.sol";
 import { MockReentrantERC20 } from "../../../../mocks/MockReentrantERC20.sol";
 import { Integration_Test } from "../../../Integration.t.sol";
 
-contract Swap_Integration_Concrete_Test is Integration_Test {
+contract SwapIntegrationConcreteTest is Integration_Test {
     /// @dev Calldata that drives `MockOneInchRouter.execute(amountIn)`.
     function _execCalldata(uint256 amountIn) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(MockOneInchRouter.execute.selector, amountIn);
@@ -25,30 +25,38 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
                                   REVERT BRANCHES
     //////////////////////////////////////////////////////////////////////////*/
 
+    function test_RevertWhen_DeadlineExpired() external whenCallerVault {
+        uint256 expired = block.timestamp - 1;
+        // Deadline check runs before the amountIn-zero guard — passing zero amountIn must still
+        // surface as DeadlineExpired, locking the ordering.
+        vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.DeadlineExpired.selector, expired, block.timestamp));
+        swapAdapter.swap(address(usdc), address(usdt), 0, 0, expired, _execCalldata(0));
+    }
+
     function test_RevertWhen_AmountInZero() external whenCallerVault {
         vm.expectRevert(IYoSwapAdapter.InvalidAmount.selector);
-        swapAdapter.swap(address(usdc), address(usdt), 0, 0, _execCalldata(0));
+        swapAdapter.swap(address(usdc), address(usdt), 0, 0, type(uint256).max, _execCalldata(0));
     }
 
     function test_RevertWhen_PairNotAllowed() external whenCallerVault whenAmountNotZero {
         // USDT -> USDC is not allowlisted (only the forward direction is).
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
         vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.PairNotAllowed.selector, address(usdt), address(usdc)));
-        swapAdapter.swap(address(usdt), address(usdc), amountIn, 0, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdt), address(usdc), amountIn, 0, type(uint256).max, _execCalldata(amountIn));
     }
 
     function test_RevertWhen_OracleUnknownPair() external whenCallerVault whenAmountNotZero whenPairAllowed {
         mockOracle.setUnknown(address(usdc), address(usdt), true);
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
         vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.UnknownPair.selector, address(usdc), address(usdt)));
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, 0, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, 0, type(uint256).max, _execCalldata(amountIn));
     }
 
     function test_RevertWhen_OracleStale() external whenCallerVault whenAmountNotZero whenPairAllowed {
         mockOracle.setStale(address(usdc), address(usdt), true);
         uint256 amountIn = defaults.SWAP_AMOUNT_IN();
         vm.expectRevert(abi.encodeWithSelector(IYoSwapOracle.StalePrice.selector, address(usdc)));
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, 0, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, 0, type(uint256).max, _execCalldata(amountIn));
     }
 
     function test_RevertWhen_SlippageTooLow()
@@ -65,7 +73,9 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         uint256 minOutBelowFloor = floor - 1;
 
         vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.SlippageTooLow.selector, minOutBelowFloor, floor));
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, minOutBelowFloor, _execCalldata(amountIn));
+        swapAdapter.swap(
+            address(usdc), address(usdt), amountIn, minOutBelowFloor, type(uint256).max, _execCalldata(amountIn)
+        );
     }
 
     function test_RevertWhen_VaultHasNotApprovedAdapter()
@@ -83,7 +93,7 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         _armAggregator(amountIn, address(swapAdapter));
         vm.prank(users.vault);
         vm.expectRevert();
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, type(uint256).max, _execCalldata(amountIn));
     }
 
     function test_RevertWhen_Reentered() external whenAmountNotZero {
@@ -98,13 +108,14 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         rent.approve(address(swapAdapter), type(uint256).max);
 
         uint256 amountIn = 100e6;
-        bytes memory payload =
-            abi.encodeCall(IYoSwapAdapter.swap, (address(rent), address(usdt), 1, 0, _execCalldata(1)));
+        bytes memory payload = abi.encodeCall(
+            IYoSwapAdapter.swap, (address(rent), address(usdt), 1, 0, type(uint256).max, _execCalldata(1))
+        );
         rent.arm(address(swapAdapter), payload);
 
         vm.prank(users.vault);
         vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
-        swapAdapter.swap(address(rent), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
+        swapAdapter.swap(address(rent), address(usdt), amountIn, amountIn, type(uint256).max, _execCalldata(amountIn));
     }
 
     function test_RevertWhen_AggregatorCallReverts()
@@ -119,7 +130,7 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         // Encode calldata that doesn't match any function on `MockOneInchRouter`.
         bytes memory bogus = abi.encodeWithSignature("nonexistent(uint256)", amountIn);
         vm.expectRevert();
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, bogus);
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, type(uint256).max, bogus);
     }
 
     function test_RevertGiven_InsufficientOutput()
@@ -135,7 +146,7 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         _armAggregator(actualOut, address(swapAdapter));
 
         vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, actualOut, amountIn));
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, type(uint256).max, _execCalldata(amountIn));
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -157,8 +168,9 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
         uint256 vaultUsdcBefore = usdc.balanceOf(users.vault);
         uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
 
-        uint256 amountOut =
-            swapAdapter.swap(address(usdc), address(usdt), amountIn, expectedOut, _execCalldata(amountIn));
+        uint256 amountOut = swapAdapter.swap(
+            address(usdc), address(usdt), amountIn, expectedOut, type(uint256).max, _execCalldata(amountIn)
+        );
 
         assertEq(amountOut, expectedOut, "amountOut return");
         assertEq(usdc.balanceOf(users.vault), vaultUsdcBefore - amountIn, "vault USDC out");
@@ -188,8 +200,9 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
 
         uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
         vm.prank(users.vault);
-        uint256 amountOut =
-            swapAdapter.swap(address(usdc), address(usdt), amountIn, expectedOut, _execCalldata(amountIn));
+        uint256 amountOut = swapAdapter.swap(
+            address(usdc), address(usdt), amountIn, expectedOut, type(uint256).max, _execCalldata(amountIn)
+        );
 
         assertEq(amountOut, expectedOut, "amountOut return");
         assertEq(usdt.balanceOf(users.vault), vaultUsdtBefore + expectedOut, "vault USDT in");
@@ -206,6 +219,6 @@ contract Swap_Integration_Concrete_Test is Integration_Test {
 
         vm.prank(users.vault);
         vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.InsufficientOutput.selector, actualOut, amountIn));
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, type(uint256).max, _execCalldata(amountIn));
     }
 }

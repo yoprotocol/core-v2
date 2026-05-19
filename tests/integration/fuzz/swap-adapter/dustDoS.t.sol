@@ -6,7 +6,7 @@ import { Integration_Test } from "../../Integration.t.sol";
 
 /// @notice Regression for the audit finding: pre-existing `tokenIn` dust at the adapter address
 ///         must NOT permanently DoS swaps for that input token.
-contract DustDoS_SwapAdapter_Integration_Fuzz_Test is Integration_Test {
+contract DustDoSSwapAdapterIntegrationFuzzTest is Integration_Test {
     function _execCalldata(uint256 amountIn) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(MockOneInchRouter.execute.selector, amountIn);
     }
@@ -21,7 +21,7 @@ contract DustDoS_SwapAdapter_Integration_Fuzz_Test is Integration_Test {
         mockAggregator.setSwap(address(usdc), address(usdt), amountIn, address(swapAdapter));
 
         vm.prank(users.vault);
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, type(uint256).max, _execCalldata(amountIn));
 
         assertEq(usdc.balanceOf(address(swapAdapter)), dust, "dust untouched");
     }

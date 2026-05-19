@@ -6,7 +6,7 @@ import { IYoSwapAdapter } from "src/interfaces/IYoSwapAdapter.sol";
 import { MockOneInchRouter } from "../../../mocks/MockOneInchRouter.sol";
 import { Integration_Test } from "../../Integration.t.sol";
 
-contract Swap_Integration_Fuzz_Test is Integration_Test {
+contract SwapIntegrationFuzzTest is Integration_Test {
     uint256 private constant FUZZ_MIN = 1;
     uint256 private constant FUZZ_MAX = 100_000e6;
 
@@ -33,14 +33,15 @@ contract Swap_Integration_Fuzz_Test is Integration_Test {
         if (minOut < floor) {
             vm.prank(users.vault);
             vm.expectRevert(abi.encodeWithSelector(IYoSwapAdapter.SlippageTooLow.selector, minOut, floor));
-            swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, _execCalldata(amountIn));
+            swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, type(uint256).max, _execCalldata(amountIn));
         } else {
             uint256 vaultUsdtBefore = usdt.balanceOf(users.vault);
             // Prank IMMEDIATELY before the swap — `vm.prank` only applies to the next external call,
             // and any view call (e.g. balanceOf) before it would consume the prank.
             vm.prank(users.vault);
-            uint256 amountOut =
-                swapAdapter.swap(address(usdc), address(usdt), amountIn, minOut, _execCalldata(amountIn));
+            uint256 amountOut = swapAdapter.swap(
+                address(usdc), address(usdt), amountIn, minOut, type(uint256).max, _execCalldata(amountIn)
+            );
             assertGe(amountOut, minOut, "amountOut >= minOut");
             assertEq(usdt.balanceOf(users.vault), vaultUsdtBefore + amountIn, "vault USDT delta");
         }
@@ -55,7 +56,7 @@ contract Swap_Integration_Fuzz_Test is Integration_Test {
         mockAggregator.setSwap(address(usdc), address(usdt), amountIn, address(swapAdapter));
 
         vm.prank(users.vault);
-        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, _execCalldata(amountIn));
+        swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, type(uint256).max, _execCalldata(amountIn));
 
         assertZeroBalance(address(usdc), address(swapAdapter));
         assertZeroBalance(address(usdt), address(swapAdapter));
