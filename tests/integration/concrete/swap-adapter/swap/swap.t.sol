@@ -181,6 +181,31 @@ contract SwapIntegrationConcreteTest is Integration_Test {
         assertZeroAllowance(address(usdc), address(swapAdapter), address(mockAggregator));
     }
 
+    function test_EmitsSwapAction()
+        external
+        whenCallerVault
+        whenAmountNotZero
+        whenPairAllowed
+        whenOracleQuoteAvailable
+    {
+        uint256 amountIn = defaults.SWAP_AMOUNT_IN();
+        uint256 expectedOut = amountIn;
+        _armAggregator(expectedOut, address(swapAdapter));
+
+        vm.expectEmit(true, true, true, true, address(swapAdapter));
+        emit IYoSwapAdapter.SwapAction(
+            users.vault,
+            address(mockAggregator),
+            address(usdc),
+            address(usdt),
+            amountIn,
+            expectedOut
+        );
+        swapAdapter.swap(
+            address(usdc), address(usdt), amountIn, expectedOut, type(uint256).max, _execCalldata(amountIn)
+        );
+    }
+
     /*//////////////////////////////////////////////////////////////////////////
                               OPERATOR_TRUSTED MODE
     //////////////////////////////////////////////////////////////////////////*/

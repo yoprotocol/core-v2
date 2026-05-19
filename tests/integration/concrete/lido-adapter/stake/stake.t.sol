@@ -3,6 +3,7 @@ pragma solidity 0.8.34;
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
+import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
 import { IYoLidoAdapter } from "src/interfaces/IYoLidoAdapter.sol";
 
 import { Integration_Test } from "../../../Integration.t.sol";
@@ -46,5 +47,18 @@ contract StakeLidoIntegrationConcreteTest is Integration_Test {
         assertEq(address(lidoAdapter).balance, 0, "adapter ETH");
         assertEq(mockWETH.balanceOf(address(lidoAdapter)), 0, "adapter WETH");
         assertEq(mockStETH.balanceOf(address(lidoAdapter)), 0, "adapter stETH");
+    }
+
+    function test_EmitsAdapterAction() external whenCallerVault whenAmountNotZero {
+        uint256 amount = 10 ether;
+        vm.expectEmit(true, true, true, true, address(lidoAdapter));
+        emit YoAdapterBase.AdapterAction(
+            users.vault,
+            address(mockStETH),
+            address(mockWETH),
+            YoAdapterBase.AdapterDirection.Deposit,
+            amount
+        );
+        lidoAdapter.stake(amount);
     }
 }

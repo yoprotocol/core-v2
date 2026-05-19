@@ -84,6 +84,8 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
         if (stETHReceived == 0) {
             revert NoShareDelta();
         }
+
+        _emitAction(address(stETH), address(weth), AdapterDirection.Deposit, wethAmount);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -147,5 +149,7 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
         weth.deposit{ value: ethReceived }();
         wethToken.safeTransfer(vault, ethReceived);
         wethReceived = ethReceived;
+
+        _emitAction(address(withdrawalQueue), address(weth), AdapterDirection.Withdraw, ethReceived);
     }
 }

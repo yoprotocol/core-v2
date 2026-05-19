@@ -4,6 +4,7 @@ pragma solidity 0.8.34;
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
 import { IYoERC4626Adapter } from "src/interfaces/IYoERC4626Adapter.sol";
 
 import { MockERC4626 } from "../../../../mocks/MockERC4626.sol";
@@ -63,5 +64,18 @@ contract DepositERC4626IntegrationConcreteTest is Integration_Test {
 
         assertZeroBalance(address(usdc), address(yieldAdapter));
         assertZeroAllowance(address(usdc), address(yieldAdapter), address(mockYieldVault));
+    }
+
+    function test_EmitsAdapterAction() external whenCallerVault whenAmountNotZero {
+        uint256 amount = defaults.SUPPLY_AMOUNT();
+        vm.expectEmit(true, true, true, true, address(yieldAdapter));
+        emit YoAdapterBase.AdapterAction(
+            users.vault,
+            address(mockYieldVault),
+            address(usdc),
+            YoAdapterBase.AdapterDirection.Deposit,
+            amount
+        );
+        yieldAdapter.deposit(mockYieldVault, amount);
     }
 }

@@ -3,13 +3,14 @@ pragma solidity 0.8.34;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
 import { Id } from "src/interfaces/IMorpho.sol";
 import { IYoMorphoAdapter } from "src/interfaces/IYoMorphoAdapter.sol";
 
 import { MockReentrantERC20 } from "../../../../mocks/MockReentrantERC20.sol";
 import { Integration_Test } from "../../../Integration.t.sol";
 
-contract Supply_Integration_Concrete_Test is Integration_Test {
+contract SupplyIntegrationConcreteTest is Integration_Test {
     /*//////////////////////////////////////////////////////////////////////////
                                   REVERT BRANCHES
     //////////////////////////////////////////////////////////////////////////*/
@@ -115,5 +116,19 @@ contract Supply_Integration_Concrete_Test is Integration_Test {
         // Custody invariants: adapter ends clean.
         assertZeroBalance(address(usdc), address(morphoAdapter));
         assertZeroAllowance(address(usdc), address(morphoAdapter), address(mockMorpho));
+    }
+
+    function test_EmitsAdapterAction() external whenCallerVault whenAmountNotZero whenMarketAllowed {
+        Id m = defaults.MARKET_A();
+        uint256 amount = defaults.SUPPLY_AMOUNT();
+        vm.expectEmit(true, true, true, true, address(morphoAdapter));
+        emit YoAdapterBase.AdapterAction(
+            users.vault,
+            address(mockMorpho),
+            address(usdc),
+            YoAdapterBase.AdapterDirection.Deposit,
+            amount
+        );
+        morphoAdapter.supply(m, amount);
     }
 }

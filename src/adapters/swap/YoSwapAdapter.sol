@@ -91,24 +91,28 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         }
 
         IERC20 inToken = IERC20(tokenIn);
-        IERC20 outToken = IERC20(tokenOut);
-        uint256 vaultOutBefore = outToken.balanceOf(vault);
+        {
+            IERC20 outToken = IERC20(tokenOut);
+            uint256 vaultOutBefore = outToken.balanceOf(vault);
 
-        inToken.safeTransferFrom(vault, address(this), amountIn);
-        inToken.forceApprove(aggregator, amountIn);
+            inToken.safeTransferFrom(vault, address(this), amountIn);
+            inToken.forceApprove(aggregator, amountIn);
 
-        aggregator.functionCall(aggregatorCalldata);
+            aggregator.functionCall(aggregatorCalldata);
 
-        uint256 adapterOut = outToken.balanceOf(address(this));
-        if (adapterOut > 0) {
-            outToken.safeTransfer(vault, adapterOut);
+            uint256 adapterOut = outToken.balanceOf(address(this));
+            if (adapterOut > 0) {
+                outToken.safeTransfer(vault, adapterOut);
+            }
+
+            amountOut = outToken.balanceOf(vault) - vaultOutBefore;
         }
-
-        amountOut = outToken.balanceOf(vault) - vaultOutBefore;
         if (amountOut < minOut) {
             revert InsufficientOutput(amountOut, minOut);
         }
 
         inToken.forceApprove(aggregator, 0);
+
+        emit SwapAction(vault, aggregator, tokenIn, tokenOut, amountIn, amountOut);
     }
 }

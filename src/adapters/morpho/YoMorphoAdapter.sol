@@ -72,6 +72,8 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
         if (sharesAfter <= sharesBefore) {
             revert NoShareDelta();
         }
+
+        _emitAction(address(morpho), p.loanToken, AdapterDirection.Deposit, assetsSupplied);
     }
 
     /// @inheritdoc IYoMorphoAdapter
@@ -97,6 +99,8 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
         }
 
         (assetsWithdrawn, sharesBurned) = morpho.withdraw(p, assets, 0, vault, vault);
+
+        _emitAction(address(morpho), p.loanToken, AdapterDirection.Withdraw, assetsWithdrawn);
     }
 
     /// @inheritdoc IYoMorphoAdapter
@@ -117,5 +121,7 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
         }
 
         (assetsWithdrawn, sharesBurned) = morpho.withdraw(p, 0, shares, vault, vault);
+
+        _emitAction(address(morpho), p.loanToken, AdapterDirection.Withdraw, assetsWithdrawn);
     }
 }

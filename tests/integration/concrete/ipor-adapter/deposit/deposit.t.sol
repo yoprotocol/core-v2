@@ -4,6 +4,7 @@ pragma solidity 0.8.34;
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
 import { IIPORPlasmaVault } from "src/interfaces/external/IIPORPlasmaVault.sol";
 import { IYoIPORAdapter } from "src/interfaces/IYoIPORAdapter.sol";
 
@@ -68,5 +69,18 @@ contract DepositIPORIntegrationConcreteTest is Integration_Test {
 
         assertZeroBalance(address(usdc), address(iporAdapter));
         assertZeroAllowance(address(usdc), address(iporAdapter), address(mockPlasmaVault));
+    }
+
+    function test_EmitsAdapterAction() external whenCallerVault whenAmountNotZero {
+        uint256 amount = defaults.SUPPLY_AMOUNT();
+        vm.expectEmit(true, true, true, true, address(iporAdapter));
+        emit YoAdapterBase.AdapterAction(
+            users.vault,
+            address(mockPlasmaVault),
+            address(usdc),
+            YoAdapterBase.AdapterDirection.Deposit,
+            amount
+        );
+        iporAdapter.deposit(mockPlasmaVault, amount);
     }
 }

@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import { IYoERC4626Adapter } from "../../interfaces/IYoERC4626Adapter.sol";
-import { IYoERC4626VaultRegistry } from "../../interfaces/IYoERC4626VaultRegistry.sol";
-import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
-import { YoAdapterBase } from "../base/YoAdapterBase.sol";
+import { IYoERC4626Adapter } from "./../../interfaces/IYoERC4626Adapter.sol";
+import { IYoERC4626VaultRegistry } from "./../../interfaces/IYoERC4626VaultRegistry.sol";
+import { IYoRegistry } from "./../../interfaces/IYoRegistry.sol";
+import { YoAdapterBase } from "./../base/YoAdapterBase.sol";
 
 /// @title  YoERC4626Adapter
 /// @notice Immutable adapter for any ERC-4626 yield vault (MetaMorpho, Yearn V3, Pendle PT, etc.).
@@ -48,6 +47,8 @@ contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
         sharesReceived = yieldVault.deposit(assets, vault);
 
         asset.forceApprove(address(yieldVault), 0);
+
+        _emitAction(address(yieldVault), address(asset), AdapterDirection.Deposit, assets);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -61,6 +62,8 @@ contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
         }
         address vault = _authorize(yieldVault);
         sharesBurned = yieldVault.withdraw(assets, vault, vault);
+
+        _emitAction(address(yieldVault), yieldVault.asset(), AdapterDirection.Withdraw, assets);
     }
 
     /// @inheritdoc IYoERC4626Adapter
@@ -73,6 +76,8 @@ contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
         }
 
         assetsReceived = yieldVault.redeem(shares, vault, vault);
+
+        _emitAction(address(yieldVault), yieldVault.asset(), AdapterDirection.Withdraw, assetsReceived);
     }
 
     /*//////////////////////////////////////////////////////////////////////////

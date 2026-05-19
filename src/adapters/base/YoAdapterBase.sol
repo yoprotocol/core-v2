@@ -40,6 +40,30 @@ abstract contract YoAdapterBase is ReentrancyGuard {
     /// @notice Emitted on every successful `rescueETH()`. `amount == 0` is permitted and emits.
     event RescuedETH(address indexed to, uint256 amount);
 
+    /// @notice Direction of value flow relative to the calling vault.
+    /// @dev    `Deposit` = vault → external protocol; `Withdraw` = external protocol → vault.
+    ///         `YoSwapAdapter` does not emit `AdapterAction`; it has its own `SwapAction` event
+    ///         that captures both legs of an exchange in a single log.
+    enum AdapterDirection {
+        Deposit,
+        Withdraw
+    }
+
+    /// @notice Vault-level audit signal emitted by every adapter operation. Lets off-chain
+    ///         monitoring reconstruct strategy actions without parsing each external protocol's logs.
+    /// @param  vault     The calling YO vault (always `msg.sender` for adapter entrypoints).
+    /// @param  target    The external protocol contract the adapter interacted with.
+    /// @param  asset     The ERC-20 token whose movement defines this leg of the action.
+    /// @param  direction Inflow or outflow relative to the vault.
+    /// @param  amount    Quantity of `asset` in its native decimals.
+    event AdapterAction(
+        address indexed vault,
+        address indexed target,
+        address indexed asset,
+        AdapterDirection direction,
+        uint256 amount
+    );
+
     constructor(IYoRegistry _yoRegistry) {
         if (address(_yoRegistry) == address(0)) {
             revert ZeroRegistry();
@@ -66,6 +90,12 @@ abstract contract YoAdapterBase is ReentrancyGuard {
             token.safeTransfer(msg.sender, amount);
         }
         emit Rescued(address(token), msg.sender, amount);
+    }
+
+    /// @dev Emit an `AdapterAction` log keyed on `msg.sender` (the calling vault). Used by every
+    ///      adapter at the point a deposit / withdraw / swap leg completes.
+    function _emitAction(address target, address asset, AdapterDirection direction, uint256 amount) internal {
+        emit AdapterAction(msg.sender, target, asset, direction, amount);
     }
 
     /// @notice Sweep this adapter's full ETH balance to the calling vault. Callable only by a

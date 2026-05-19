@@ -57,6 +57,8 @@ contract YoIPORAdapter is YoAdapterBase, IYoIPORAdapter {
         sharesReceived = plasmaVault.deposit(assets, vault);
 
         asset.forceApprove(address(plasmaVault), 0);
+
+        _emitAction(address(plasmaVault), address(asset), AdapterDirection.Deposit, assets);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -74,6 +76,8 @@ contract YoIPORAdapter is YoAdapterBase, IYoIPORAdapter {
         }
         address vault = _authorize(plasmaVault);
         assetsReceived = plasmaVault.redeemFromRequest(shares, vault, vault);
+
+        _emitAction(address(plasmaVault), plasmaVault.asset(), AdapterDirection.Withdraw, assetsReceived);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
