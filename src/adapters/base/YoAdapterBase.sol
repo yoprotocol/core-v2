@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
 
@@ -24,7 +24,7 @@ import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
 ///           - Funds always flow to `msg.sender`; the rescue path cannot be redirected.
 ///           - Rescue shares the same reentrancy guard as the adapter's primary methods, so no
 ///             cross-method reentry is possible.
-abstract contract YoAdapterBase is ReentrancyGuard {
+abstract contract YoAdapterBase is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /// @notice Registry consulted to validate rescue callers. Immutable for the lifetime of the
