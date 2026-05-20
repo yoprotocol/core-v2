@@ -47,6 +47,8 @@ contract SwapAdapterHandler is Test {
         tokenOut.mint(address(aggregator), expectedOut);
         aggregator.setSwap(address(tokenIn), address(tokenOut), expectedOut, address(adapter));
 
+        uint256 vaultOutBefore = tokenOut.balanceOf(vault);
+
         vm.prank(vault);
         try adapter.swap(
             address(tokenIn),
@@ -59,6 +61,11 @@ contract SwapAdapterHandler is Test {
             uint256 out
         ) {
             store.recordSwap(amountIn, out);
+            // The reported `amountOut` must match the vault-side delta.
+            uint256 vaultOutAfter = tokenOut.balanceOf(vault);
+            if (vaultOutAfter - vaultOutBefore != out) {
+                store.flagSwapOutputViolation();
+            }
         } catch { }
     }
 }
