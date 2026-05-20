@@ -54,9 +54,8 @@ contract YoIPORAdapter is YoAdapterBase, IYoIPORAdapter {
         asset.safeTransferFrom(vault, address(this), assets);
         asset.forceApprove(address(plasmaVault), assets);
 
+        // `IERC4626.deposit` pulls exactly `assets`; no residual allowance to clear.
         sharesReceived = plasmaVault.deposit(assets, vault);
-
-        asset.forceApprove(address(plasmaVault), 0);
 
         _emitAction(address(plasmaVault), address(asset), AdapterDirection.Deposit, assets);
     }

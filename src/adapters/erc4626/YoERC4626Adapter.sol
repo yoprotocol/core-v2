@@ -44,9 +44,8 @@ contract YoERC4626Adapter is YoAdapterBase, IYoERC4626Adapter {
         asset.safeTransferFrom(vault, address(this), assets);
         asset.forceApprove(address(yieldVault), assets);
 
+        // `IERC4626.deposit` pulls exactly `assets`; no residual allowance to clear.
         sharesReceived = yieldVault.deposit(assets, vault);
-
-        asset.forceApprove(address(yieldVault), 0);
 
         _emitAction(address(yieldVault), address(asset), AdapterDirection.Deposit, assets);
     }

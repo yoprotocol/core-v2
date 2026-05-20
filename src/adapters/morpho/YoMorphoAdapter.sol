@@ -73,9 +73,8 @@ contract YoMorphoAdapter is YoAdapterBase, IYoMorphoAdapter {
         token.safeTransferFrom(vault, address(this), assets);
         token.forceApprove(address(morpho), assets);
 
+        // Morpho `supply` pulls exactly `assets`; no residual allowance to clear.
         (assetsSupplied, sharesSupplied) = morpho.supply(p, assets, 0, vault, "");
-
-        token.forceApprove(address(morpho), 0);
 
         uint256 sharesAfter = morpho.position(marketId, vault).supplyShares;
         if (sharesAfter <= sharesBefore) {

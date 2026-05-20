@@ -114,10 +114,9 @@ contract YoLidoAdapter is YoAdapterBase, IYoLidoAdapter {
 
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = received;
+        // `requestWithdrawals` pulls exactly `received`; no residual allowance to clear.
         uint256[] memory ids = withdrawalQueue.requestWithdrawals(amounts, vault);
         requestId = ids[0];
-
-        stETHToken.forceApprove(address(withdrawalQueue), 0);
 
         uint256 sharesAfter = stETH.sharesOf(address(this));
         if (sharesAfter > sharesBefore) {
