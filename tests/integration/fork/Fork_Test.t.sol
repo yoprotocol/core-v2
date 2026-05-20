@@ -65,28 +65,36 @@ abstract contract Fork_Test is Test {
                                    FORK HELPERS
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @dev Returns true and creates the fork; returns false (and the caller should skip) if no
-    ///      RPC URL is set in `<NAME>_RPC_URL` env var. `blockNumber == 0` forks the latest
-    ///      block — the right choice when running against a public RPC that doesn't keep old
-    ///      historical state.
-    function _forkIfAvailable(string memory envName, uint256 blockNumber) internal returns (bool ok) {
-        string memory rpc = vm.envOr(envName, string(""));
-        if (bytes(rpc).length == 0) {
+    /// @dev Returns true and creates the fork; returns false (and the caller should skip) if
+    ///      `API_KEY_ALCHEMY` isn't set (or is still the `.env.example` placeholder).
+    ///      `chainAlias` is a foundry.toml `[rpc_endpoints]` key ("base", "mainnet", ...); forge
+    ///      resolves it to the templated URL that already references `$API_KEY_ALCHEMY`. So a
+    ///      single env var unlocks every supported chain.
+    ///      `blockNumber == 0` forks the latest block — the right choice when running against a
+    ///      public RPC that doesn't keep old historical state.
+    function _forkIfAvailable(string memory chainAlias, uint256 blockNumber) internal returns (bool ok) {
+        string memory apiKey = vm.envOr("API_KEY_ALCHEMY", string(""));
+        if (bytes(apiKey).length == 0 || _isPlaceholderApiKey(apiKey)) {
             return false;
         }
         if (blockNumber == 0) {
-            vm.createSelectFork(rpc);
+            vm.createSelectFork(chainAlias);
         } else {
-            vm.createSelectFork(rpc, blockNumber);
+            vm.createSelectFork(chainAlias, blockNumber);
         }
         return true;
     }
 
-    function _maybeSkip(bool forked, string memory envName) internal {
+    function _maybeSkip(bool forked) internal {
         if (!forked) {
-            string memory reason = string.concat(envName, " not set; skipping fork test");
-            vm.skip(true, reason);
+            vm.skip(true, "API_KEY_ALCHEMY not set; skipping fork test");
         }
+    }
+
+    /// @dev `.env.example` ships with `API_KEY_ALCHEMY="YOUR_API_KEY"`; treat that literal as
+    ///      "unset" so a fresh checkout skips instead of hitting alchemy with an invalid key.
+    function _isPlaceholderApiKey(string memory key) private pure returns (bool) {
+        return keccak256(bytes(key)) == keccak256(bytes("YOUR_API_KEY"));
     }
 
     /*//////////////////////////////////////////////////////////////////////////

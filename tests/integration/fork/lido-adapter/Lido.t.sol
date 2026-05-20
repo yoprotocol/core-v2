@@ -34,7 +34,7 @@ contract LidoFork_Test is Fork_Test {
     YoLidoAdapter internal adapter;
 
     function setUp() public {
-        _maybeSkip(_forkIfAvailable("MAINNET_RPC_URL", MAINNET_BLOCK), "MAINNET_RPC_URL");
+        _maybeSkip(_forkIfAvailable("mainnet", MAINNET_BLOCK));
 
         _deployStack(IERC20(address(WETH)), "Yo WETH Vault", "yoWETH");
 

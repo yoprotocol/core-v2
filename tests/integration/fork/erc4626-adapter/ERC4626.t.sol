@@ -29,7 +29,7 @@ contract ERC4626Fork_Test is Fork_Test {
     ForkYieldVault internal yieldVault;
 
     function setUp() public {
-        _maybeSkip(_forkIfAvailable("BASE_RPC_URL", BASE_BLOCK), "BASE_RPC_URL");
+        _maybeSkip(_forkIfAvailable("base", BASE_BLOCK));
 
         _deployStack(USDC, "Yo USDC Vault", "yoUSDC");
 
@@ -81,5 +81,47 @@ contract ERC4626Fork_Test is Fork_Test {
 
         assertEq(USDC.balanceOf(address(yoVault)), part, "got part USDC");
         assertGt(yieldVault.balanceOf(address(yoVault)), 0, "position not closed");
+    }
+
+    /// @notice Deposit→withdrawAll round-trip against the Moonwell Flagship USDC MetaMorpho vault
+    ///         on Base (`mwUSDC`). Real-world target — catches non-spec extensions like
+    ///         queue-deferred withdrawals, reentrancy guards conflicting with the adapter, or
+    ///         custom share-math drift that the in-fork OZ vault above can't surface.
+    function test_Fork_ERC4626_MetaMorphoRoundTrip() external {
+        // Moonwell Flagship USDC (mwUSDC) MetaMorpho vault on Base.
+        IERC4626 mwUSDC = IERC4626(0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca);
+
+        // Sanity-check the pinned vault still takes USDC; surfaces address rot.
+        assertEq(mwUSDC.asset(), address(USDC), "mwUSDC asset must be USDC");
+
+        vm.label(address(mwUSDC), "Moonwell Flagship USDC");
+
+        vm.prank(users.owner);
+        yieldVaultRegistry.setAllowed(address(yoVault), address(mwUSDC), true);
+
+        // Share allowance for the redeem path.
+        bytes memory approveSharesCall = abi.encodeCall(IERC20.approve, (address(adapter), type(uint256).max));
+        _opManage(address(mwUSDC), approveSharesCall);
+
+        uint256 vaultUsdcBefore = USDC.balanceOf(address(yoVault));
+
+        bytes memory depositCall = abi.encodeCall(YoERC4626Adapter.deposit, (mwUSDC, DEPOSIT));
+        _opManage(address(adapter), depositCall);
+
+        assertEq(USDC.balanceOf(address(yoVault)), vaultUsdcBefore - DEPOSIT, "deposit pulled USDC");
+        assertGt(IERC20(address(mwUSDC)).balanceOf(address(yoVault)), 0, "got mwUSDC shares");
+
+        // MetaMorpho can skim fees on withdraw; allow ≤ 25 bps slack on the single-tx round trip.
+        bytes memory withdrawAllCall = abi.encodeCall(YoERC4626Adapter.withdrawAll, (mwUSDC));
+        _opManage(address(adapter), withdrawAllCall);
+
+        uint256 vaultUsdcAfter = USDC.balanceOf(address(yoVault));
+        assertGe(vaultUsdcAfter, (vaultUsdcBefore * 9975) / 10_000, "round-trip loss exceeds 25 bps");
+        assertEq(IERC20(address(mwUSDC)).balanceOf(address(yoVault)), 0, "mwUSDC shares burned");
+
+        // Adapter ends clean against the real vault too.
+        assertEq(USDC.balanceOf(address(adapter)), 0, "adapter USDC zero");
+        assertEq(IERC20(address(mwUSDC)).balanceOf(address(adapter)), 0, "adapter shares zero");
+        assertEq(USDC.allowance(address(adapter), address(mwUSDC)), 0, "no leftover allowance");
     }
 }

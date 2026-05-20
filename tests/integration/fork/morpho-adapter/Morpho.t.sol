@@ -41,7 +41,7 @@ contract MorphoFork_Test is Fork_Test {
     MarketParams internal market;
 
     function setUp() public {
-        _maybeSkip(_forkIfAvailable("BASE_RPC_URL", BASE_BLOCK), "BASE_RPC_URL");
+        _maybeSkip(_forkIfAvailable("base", BASE_BLOCK));
 
         _deployStack(USDC, "Yo USDC Vault", "yoUSDC");
 
