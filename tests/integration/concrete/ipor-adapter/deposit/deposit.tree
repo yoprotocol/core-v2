@@ -1,0 +1,19 @@
+DepositIPORIntegrationConcreteTest
+├── when assets zero
+│  └── it should revert with InvalidAmount
+└── when assets non zero
+   ├── when plasmaVault not allowlisted
+   │  └── it should revert with VaultNotAllowed
+   └── when plasmaVault allowlisted
+      ├── given vault has not approved adapter for asset
+      │  └── it should revert on transferFrom
+      └── given vault approved adapter for at least assets
+         ├── when reentered through token transfer hook
+         │  └── it should revert with ReentrancyGuardReentrantCall
+         └── when not reentered
+            ├── it should pull assets from vault
+            ├── it should call plasmaVault.deposit with receiver equal to vault
+            ├── it should reset asset allowance to zero
+            ├── it should leave zero asset in adapter
+            ├── it should grow vault share balance
+            └── it should return non zero sharesReceived

@@ -1,0 +1,22 @@
+ClaimIPORIntegrationConcreteTest
+├── when shares zero
+│  └── it should revert with InvalidAmount
+└── when shares non zero
+   ├── when plasmaVault not allowlisted
+   │  └── it should revert with VaultNotAllowed
+   └── when plasmaVault allowlisted
+      ├── given no pending request
+      │  └── it should revert with NoEligibleRequest
+      ├── given pending request before keeper release
+      │  └── it should revert with NoEligibleRequest
+      ├── given claim window expired
+      │  └── it should revert with NoEligibleRequest
+      ├── given vault has not approved adapter for shares
+      │  └── it should revert on transferFrom
+      └── given within claim window and shares approved
+         ├── it should call redeemFromRequest with owner equal to vault
+         ├── it should return assetsReceived to the vault
+         ├── it should burn the redeemed shares from the vault
+         ├── it should leave zero asset in adapter
+         ├── it should leave zero shares in adapter
+         └── it should drain the request slot
