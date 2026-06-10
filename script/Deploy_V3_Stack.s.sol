@@ -78,13 +78,17 @@ contract Deploy_V3_Stack is BaseScript {
             IMorpho(getMorphoBlue()), IYoMorphoMarketRegistry(address(d.morphoMarketRegistry)), yoRegistry
         );
 
-        d.swapAdapter = new YoSwapAdapter{ salt: SALT }({
-            _aggregator: get1inchRouter(),
-            _oracle: IYoSwapOracle(address(d.chainlinkOracle)),
-            _registry: IYoSwapPairRegistry(address(d.swapPairRegistry)),
-            _maxSlippageBps: getMaxSlippageBps(),
-            _yoRegistry: yoRegistry
-        });
+        address curveRouter = getCurveRouter();
+
+        if (curveRouter != address(0)) {
+            d.swapAdapter = new YoSwapAdapter{ salt: SALT }({
+                _aggregator: getCurveRouter(),
+                _oracle: IYoSwapOracle(address(d.chainlinkOracle)),
+                _registry: IYoSwapPairRegistry(address(d.swapPairRegistry)),
+                _maxSlippageBps: getMaxSlippageBps(),
+                _yoRegistry: yoRegistry
+            });
+        }
 
         d.erc4626Adapter =
             new YoERC4626Adapter{ salt: SALT }(IYoERC4626VaultRegistry(address(d.yieldVaultRegistry)), yoRegistry);

@@ -23,8 +23,11 @@ abstract contract BaseScript is Script {
     ///      change so CREATE2 yields a fresh address (avoids accidental same-address re-deploys).
     string internal constant YO_VERSION = "V3.0.0";
 
-    /// @dev Versioned CREATE2 salt: `"ChainID <id>, Version <ver>"`. Same source → same address on
-    ///      every chain; version bump → fresh address. Pattern adopted from Sablier.
+    /// @dev Versioned CREATE2 salt: `"Version <ver>"`. Chain-independent, so a contract with
+    ///      identical initcode (same bytecode + same constructor args) lands at the same address on
+    ///      every chain via the canonical CREATE2 factory; a version bump yields a fresh address.
+    ///      Note: contracts whose constructor args differ per chain (e.g. adapters bound to a
+    ///      chain-specific `YoRegistry` or Curve router) still get distinct addresses.
     bytes32 internal immutable SALT;
 
     address internal broadcaster;
@@ -63,8 +66,7 @@ abstract contract BaseScript is Script {
     //////////////////////////////////////////////////////////////////////////*/
 
     function _constructCreate2Salt() internal view virtual returns (bytes32) {
-        string memory chainIdStr = vm.toString(chainId);
-        string memory create2Salt = string.concat("ChainID ", chainIdStr, ", Version ", YO_VERSION);
+        string memory create2Salt = string.concat("Version ", YO_VERSION);
         uint256 len = bytes(create2Salt).length;
         if (len > 32) {
             revert SaltTooLong(len);
@@ -94,9 +96,6 @@ abstract contract BaseScript is Script {
         if (envOverride != address(0)) {
             return envOverride;
         }
-        if (chainId == ChainId.BASE) {
-            return 0x67b6F699F1c8040414032a3C2C88a54db144FCd2;
-        }
         revert ChainNotSupported("YO_OWNER", chainId);
     }
 
@@ -117,12 +116,43 @@ abstract contract BaseScript is Script {
         if (chainId == ChainId.BASE || chainId == ChainId.ETHEREUM) {
             return 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
         }
+
+        if (chainId == ChainId.HYPEREVM) {
+            return 0x68e37dE8d93d3496ae143F2E900490f6280C57cD;
+        }
         revert ChainNotSupported("Morpho Blue", chainId);
     }
 
-    /// @notice 1inch v6 aggregation router. Same address on every chain 1inch supports.
-    function get1inchRouter() public pure returns (address) {
-        return 0x111111125421cA6dc452d289314280a0f8842A65;
+    /// @notice Curve Router-NG (latest) per chain. Unlike 1inch, the router is NOT deployed at the
+    ///         same address on every chain, so each supported chain is pinned explicitly.
+    /// @dev Source: https://github.com/curvefi/curve-router-ng (README deployment table).
+    function getCurveRouter() public view returns (address) {
+        if (chainId == ChainId.ETHEREUM) {
+            return 0x45312ea0eFf7E09C83CBE249fa1d7598c4C8cd4e;
+        }
+        if (chainId == ChainId.BASE) {
+            return 0x4f37A9d177470499A2dD084621020b023fcffc1F;
+        }
+        if (chainId == ChainId.ARBITRUM) {
+            return 0x2191718CD32d02B8E60BAdFFeA33E4B5DD9A0A0D;
+        }
+        if (chainId == ChainId.OPTIMISM) {
+            return 0x0DCDED3545D565bA3B19E683431381007245d983;
+        }
+        if (chainId == ChainId.XLAYER) {
+            return 0xBFab8ebc836E1c4D81837798FC076D219C9a1855;
+        }
+
+        return address(0);
+    }
+
+    /// @notice Enso Router V2. Deployed at the same address on every chain it supports via a
+    ///         deterministic CREATE2 deployment (verified on Ethereum, Base, Arbitrum).
+    /// @dev Source: https://docs.enso.build/pages/build/reference/deployments. Confirm Enso is live
+    ///      on the target chain before deploying — {Deploy_EnsoSwapAdapter} asserts the address has
+    ///      code so a deploy on an unsupported chain reverts rather than binding a codeless router.
+    function getEnsoRouter() public pure returns (address) {
+        return 0xF75584eF6673aD213a685a1B58Cc0330B8eA22Cf;
     }
 
     /// @notice WETH address per chain.
@@ -159,6 +189,6 @@ abstract contract BaseScript is Script {
 
     /// @notice Maximum slippage in basis points for the swap adapter's oracle-checked path.
     function getMaxSlippageBps() public pure returns (uint256) {
-        return 100; // 1.00%
+        return 25; // 0.25%
     }
 }
