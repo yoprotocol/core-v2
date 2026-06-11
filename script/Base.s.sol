@@ -187,6 +187,15 @@ abstract contract BaseScript is Script {
         return chainId == ChainId.ETHEREUM;
     }
 
+    /// @notice fx Protocol's fxSAVE (`SavingFxUSD`). Mainnet-only by design; the YoFxSaveAdapter is
+    ///         not deployed on L2s.
+    function getFxSave() public view returns (address) {
+        if (chainId != ChainId.ETHEREUM) {
+            revert ChainNotSupported("fxSAVE", chainId);
+        }
+        return 0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39;
+    }
+
     /// @notice Maximum slippage in basis points for the swap adapter's oracle-checked path.
     function getMaxSlippageBps() public pure returns (uint256) {
         return 25; // 0.25%
