@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import { Errors } from "./libraries/Errors.sol";
-import { IYoVault } from "./interfaces/IYoVault.sol";
-import { IYoOracle } from "./interfaces/IYoOracle.sol";
-import { IYoApprovalRegistry } from "./interfaces/IYoApprovalRegistry.sol";
-
-import { Compatible } from "./base/Compatible.sol";
-import { AuthUpgradeable } from "./base/AuthUpgradeable.sol";
-import { IAuthority } from "./interfaces/IAuthority.sol";
-
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC4626Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import { AuthUpgradeable } from "./base/AuthUpgradeable.sol";
+import { Compatible } from "./base/Compatible.sol";
+import { IAuthority } from "./interfaces/IAuthority.sol";
+import { IYoApprovalRegistry } from "./interfaces/IYoApprovalRegistry.sol";
+import { IYoOracle } from "./interfaces/IYoOracle.sol";
+import { IYoVault } from "./interfaces/IYoVault.sol";
+import { Errors } from "./libraries/Errors.sol";
 
 // __   __    ____            _                  _
 // \ \ / /__ |  _ \ _ __ ___ | |_ ___   ___ ___ | |
@@ -29,7 +28,14 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 /// Oracle-driven pricing: share conversions query `_oracleAsset()` via `ORACLE_ADDRESS`,
 /// which subclasses can override to price against a different asset.
 
-contract YoVault is ERC4626Upgradeable, Compatible, IYoVault, AuthUpgradeable, PausableUpgradeable {
+contract YoVault is
+    ERC4626Upgradeable,
+    Compatible,
+    IYoVault,
+    AuthUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardTransient
+{
     using Math for uint256;
     using Address for address;
     using SafeERC20 for IERC20;
@@ -104,6 +110,7 @@ contract YoVault is ERC4626Upgradeable, Compatible, IYoVault, AuthUpgradeable, P
     )
         external
         requiresAuth
+        nonReentrant
         returns (bytes memory result)
     {
         bytes4 functionSig = bytes4(data);
@@ -125,6 +132,7 @@ contract YoVault is ERC4626Upgradeable, Compatible, IYoVault, AuthUpgradeable, P
     )
         external
         requiresAuth
+        nonReentrant
         returns (bytes[] memory results)
     {
         uint256 targetsLength = targets.length;

@@ -1,0 +1,7 @@
+ManageReentrancy_Integration_Concrete_Test
+├── when a managed call reenters manage through a different adapter
+│  └── it should revert with ReentrancyGuardReentrantCall
+├── when a managed call reenters manage through the same adapter
+│  └── it should revert with ReentrancyGuardReentrantCall
+└── when a single managed swap does not reenter
+   └── it should succeed and credit the vault
