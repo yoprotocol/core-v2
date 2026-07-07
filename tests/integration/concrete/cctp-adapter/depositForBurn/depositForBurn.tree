@@ -1,0 +1,14 @@
+DepositForBurn_CctpAdapter_Integration_Concrete_Test
+├── when amount zero
+│  └── it should revert with InvalidAmount
+└── when amount non zero
+   ├── when route not allowed
+   │  └── it should revert with RouteNotAllowed
+   └── when route allowed
+      ├── it should pull amount of usdc from the vault
+      ├── it should forward burnToken as usdc
+      ├── it should forward the params to the tokenMessenger
+      ├── it should reset tokenMessenger allowance to zero
+      ├── it should leave zero usdc in the adapter
+      ├── it should emit AdapterAction
+      └── it should return amount

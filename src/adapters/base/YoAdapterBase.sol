@@ -41,12 +41,15 @@ abstract contract YoAdapterBase is ReentrancyGuardTransient {
     event RescuedETH(address indexed to, uint256 amount);
 
     /// @notice Direction of value flow relative to the calling vault.
-    /// @dev    `Deposit` = vault → external protocol; `Withdraw` = external protocol → vault.
-    ///         `YoSwapAdapter` does not emit `AdapterAction`; it has its own `SwapAction` event
-    ///         that captures both legs of an exchange in a single log.
+    /// @dev    `Deposit` = vault → external protocol; `Withdraw` = external protocol → vault;
+    ///         `Bridge` = vault → another chain (funds leave this chain and do not return to the
+    ///         vault here). New variants are appended so existing ordinals stay stable for off-chain
+    ///         decoders. `YoSwapAdapter` does not emit `AdapterAction`; it has its own `SwapAction`
+    ///         event that captures both legs of an exchange in a single log.
     enum AdapterDirection {
         Deposit,
-        Withdraw
+        Withdraw,
+        Bridge
     }
 
     /// @notice Vault-level audit signal emitted by every adapter operation. Lets off-chain

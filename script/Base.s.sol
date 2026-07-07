@@ -271,6 +271,28 @@ abstract contract BaseScript is Script {
         return 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d;
     }
 
+    /// @notice Mayan Forwarder. Deployed at the same address on every supported EVM chain.
+    /// @dev    Source: https://docs.mayan.finance/integration/forwarder-contract. Overridable via the
+    ///         `MAYAN_FORWARDER` env var.
+    function getMayanForwarder() public view returns (address) {
+        address envOverride = vm.envOr({ name: "MAYAN_FORWARDER", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        return 0x337685fdaB40D39bd02028545a4FfA7D287cC3E2;
+    }
+
+    /// @notice Mayan Swift settlement contract. Same address on every supported EVM chain.
+    /// @dev    Source: https://docs.mayan.finance/architecture/swift. Overridable via the
+    ///         `MAYAN_SWIFT` env var.
+    function getMayanSwift() public view returns (address) {
+        address envOverride = vm.envOr({ name: "MAYAN_SWIFT", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        return 0xC38e4e6A15593f908255214653d3D947CA1c2338;
+    }
+
     /// @notice Native (Circle-issued) USDC per chain. Overridable via the `USDC` env var.
     function getUSDC() public view returns (address) {
         address envOverride = vm.envOr({ name: "USDC", defaultValue: address(0) });

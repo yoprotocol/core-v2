@@ -1,0 +1,17 @@
+SetRoute_BridgeRouteRegistry_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert
+└── when caller owner
+   ├── when vault zero
+   │  └── it should revert with ZeroAddress
+   ├── when adapter zero
+   │  └── it should revert with ZeroAddress
+   ├── when token zero
+   │  └── it should revert with ZeroAddress
+   └── when all addresses valid
+      ├── given allowed true
+      │  ├── it should make isRouteAllowed return true
+      │  └── it should emit RouteSet
+      └── given allowed false
+         ├── it should make isRouteAllowed return false
+         └── it should emit RouteSet

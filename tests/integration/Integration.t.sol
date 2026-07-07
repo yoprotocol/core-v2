@@ -23,6 +23,29 @@ abstract contract Integration_Test is Base_Test {
         // Pre-mint balances for the vault stand-in.
         usdc.mint(users.vault, 1_000_000e6);
         usdt.mint(users.vault, 1_000_000e6);
+        link.mint(users.vault, 1_000_000e18);
+
+        // Default bridge routes for the standard vault stand-in (one per bridge adapter).
+        _allowRoute(
+            users.vault,
+            address(acrossAdapter),
+            address(usdc),
+            defaults.ACROSS_DEST_CHAIN_ID(),
+            defaults.BRIDGE_RECIPIENT()
+        );
+        _allowRoute(
+            users.vault, address(cctpAdapter), address(usdc), defaults.CCTP_DEST_DOMAIN(), defaults.BRIDGE_RECIPIENT()
+        );
+        _allowRoute(
+            users.vault, address(ccipAdapter), address(usdc), defaults.CCIP_DEST_SELECTOR(), defaults.BRIDGE_RECIPIENT()
+        );
+        _allowRoute(
+            users.vault,
+            address(mayanAdapter),
+            address(usdc),
+            defaults.MAYAN_DEST_WORMHOLE_CHAIN(),
+            defaults.BRIDGE_RECIPIENT()
+        );
 
         // Default yield-vault allowlist + USDC approvals. The IPOR PlasmaVault reuses the shared
         // ERC-4626 vault registry.
@@ -41,6 +64,12 @@ abstract contract Integration_Test is Base_Test {
         mockPlasmaVault.approve(address(iporAdapter), type(uint256).max);
         // Morpho authorization for the Morpho adapter (different mechanism: setAuthorization).
         mockMorpho.setAuthorization(address(morphoAdapter), true);
+        // Bridge adapters: vault approves USDC (all three) and LINK (CCIP fee path).
+        usdc.approve(address(acrossAdapter), type(uint256).max);
+        usdc.approve(address(cctpAdapter), type(uint256).max);
+        usdc.approve(address(ccipAdapter), type(uint256).max);
+        usdc.approve(address(mayanAdapter), type(uint256).max);
+        link.approve(address(ccipAdapter), type(uint256).max);
         // Lido adapter: vault approves WETH (stake), stETH (unstake request), and the withdrawal
         // queue NFT (claim).
         mockWETH.approve(address(lidoAdapter), type(uint256).max);

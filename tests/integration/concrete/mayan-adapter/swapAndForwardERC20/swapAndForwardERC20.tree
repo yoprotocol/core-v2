@@ -1,0 +1,15 @@
+SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test
+├── when amountIn zero
+│  └── it should revert with InvalidAmount
+└── when amountIn non zero
+   ├── when order token not middleToken
+   │  └── it should revert with ProtocolDataMismatch
+   ├── when trader not vault
+   │  └── it should revert with TraderNotVault
+   ├── when route not allowed
+   │  └── it should revert with RouteNotAllowed
+   └── when order valid and route allowed
+      ├── it should pull amountIn from the vault
+      ├── it should forward swap params and mayanData to the forwarder
+      ├── it should reset forwarder allowance to zero
+      └── it should return amountIn

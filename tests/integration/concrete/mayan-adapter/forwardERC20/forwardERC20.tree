@@ -1,0 +1,18 @@
+ForwardERC20_MayanAdapter_Integration_Concrete_Test
+├── when amountIn zero
+│  └── it should revert with InvalidAmount
+└── when amountIn non zero
+   ├── when protocolData selector not createOrderWithToken
+   │  └── it should revert with UnsupportedProtocolData
+   ├── when order token or amount mismatch
+   │  └── it should revert with ProtocolDataMismatch
+   ├── when trader not vault
+   │  └── it should revert with TraderNotVault
+   ├── when route not allowed
+   │  └── it should revert with RouteNotAllowed
+   └── when order valid and route allowed
+      ├── it should pull amountIn from the vault
+      ├── it should forward to the swift protocol with protocolData
+      ├── it should reset forwarder allowance to zero
+      ├── it should emit AdapterAction
+      └── it should return amountIn
