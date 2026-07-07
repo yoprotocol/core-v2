@@ -84,6 +84,12 @@ abstract contract BaseScript is Script {
         return address(uint160(uint256(vm.load(proxy, ERC1967Utils.ADMIN_SLOT))));
     }
 
+    /// @dev Read a proxy's current implementation directly from the ERC-1967 implementation slot.
+    ///      Used by deploy scripts to make re-runs idempotent (skip already-performed upgrades).
+    function _readProxyImplementation(address proxy) internal view returns (address) {
+        return address(uint160(uint256(vm.load(proxy, ERC1967Utils.IMPLEMENTATION_SLOT))));
+    }
+
     /*//////////////////////////////////////////////////////////////////////////
                               CHAIN-AWARE ADDRESS GETTERS
     //////////////////////////////////////////////////////////////////////////*/
@@ -120,6 +126,11 @@ abstract contract BaseScript is Script {
         if (chainId == ChainId.HYPEREVM) {
             return 0x68e37dE8d93d3496ae143F2E900490f6280C57cD;
         }
+
+        if (chainId == ChainId.MONAD) {
+            return 0xD5D960E8C380B724a48AC59E2DfF1b2CB4a1eAee;
+        }
+
         revert ChainNotSupported("Morpho Blue", chainId);
     }
 
@@ -199,5 +210,85 @@ abstract contract BaseScript is Script {
     /// @notice Maximum slippage in basis points for the swap adapter's oracle-checked path.
     function getMaxSlippageBps() public pure returns (uint256) {
         return 25; // 0.25%
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                 BRIDGE ADDRESSES
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Across Protocol `SpokePool` per chain. Distinct (non-deterministic) address per chain.
+    /// @dev    Source: https://docs.across.to/reference/contract-addresses. Overridable via the
+    ///         `ACROSS_SPOKE_POOL` env var; chains not pinned here require the override.
+    function getAcrossSpokePool() public view returns (address) {
+        address envOverride = vm.envOr({ name: "ACROSS_SPOKE_POOL", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        if (chainId == ChainId.ETHEREUM) {
+            return 0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5;
+        }
+        if (chainId == ChainId.BASE) {
+            return 0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64;
+        }
+        if (chainId == ChainId.OPTIMISM) {
+            return 0x6f26Bf09B1C792e3228e5467807a900A503c0281;
+        }
+        revert ChainNotSupported("Across SpokePool", chainId);
+    }
+
+    /// @notice Chainlink CCIP `Router` per chain. Distinct address per chain.
+    /// @dev    Source: https://docs.chain.link/ccip/directory/mainnet. Overridable via the
+    ///         `CCIP_ROUTER` env var.
+    function getCcipRouter() public view returns (address) {
+        address envOverride = vm.envOr({ name: "CCIP_ROUTER", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        if (chainId == ChainId.ETHEREUM) {
+            return 0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D;
+        }
+        if (chainId == ChainId.BASE) {
+            return 0x881e3A65B4d4a04dD529061dd0071cf975F58bCD;
+        }
+        if (chainId == ChainId.ARBITRUM) {
+            return 0x141fa059441E0ca23ce184B6A78bafD2A517DdE8;
+        }
+        if (chainId == ChainId.OPTIMISM) {
+            return 0x3206695CaE29952f4b0c22a169725a865bc8Ce0f;
+        }
+        revert ChainNotSupported("CCIP Router", chainId);
+    }
+
+    /// @notice Circle CCTP V2 `TokenMessengerV2`. Deployed at the same deterministic address on every
+    ///         supported chain, like Morpho Blue.
+    /// @dev    Source: https://developers.circle.com/cctp/evm-smart-contracts. Overridable via the
+    ///         `CCTP_TOKEN_MESSENGER` env var.
+    function getCctpTokenMessenger() public view returns (address) {
+        address envOverride = vm.envOr({ name: "CCTP_TOKEN_MESSENGER", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        return 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d;
+    }
+
+    /// @notice Native (Circle-issued) USDC per chain. Overridable via the `USDC` env var.
+    function getUSDC() public view returns (address) {
+        address envOverride = vm.envOr({ name: "USDC", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        if (chainId == ChainId.ETHEREUM) {
+            return 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        }
+        if (chainId == ChainId.BASE) {
+            return 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+        }
+        if (chainId == ChainId.ARBITRUM) {
+            return 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+        }
+        if (chainId == ChainId.OPTIMISM) {
+            return 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85;
+        }
+        revert ChainNotSupported("USDC", chainId);
     }
 }

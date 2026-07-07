@@ -12,6 +12,7 @@ fs_permissions = [
   { access = "read", path = "./out" },
   { access = "read", path = "./out-optimized" },
   { access = "read", path = "package.json" },
+  { access = "read-write", path = "./script/safe-batches" },
 ]
 gas_limit = 9_223_372_036_854_775_807
 gas_reports = ["*"]
@@ -62,7 +63,7 @@ out = "docs"
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}" }
-monad = { key = "${ETHERSCAN_API_KEY}", chain = "143" }
+monad = { key = "${ETHERSCAN_API_KEY}", chain = "143", url = "https://api.etherscan.io/v2/api" }
 
 [fmt]
 bracket_spacing = true

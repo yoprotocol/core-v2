@@ -60,3 +60,4 @@ contract Deploy_FxSaveAdapter is BaseScript {
         console2.log("YoRegistry (existing):", yoRegistry);
     }
 }
+
