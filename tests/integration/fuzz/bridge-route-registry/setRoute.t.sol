@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import { IYoBridgeRouteRegistry } from "src/interfaces/IYoBridgeRouteRegistry.sol";
+
 import { Integration_Test } from "../../Integration.t.sol";
 
 contract SetRoute_BridgeRouteRegistry_Integration_Fuzz_Test is Integration_Test {
+    function test_RevertWhen_RenounceOwnership() external {
+        vm.prank(users.owner);
+        vm.expectRevert(IYoBridgeRouteRegistry.RenounceDisabled.selector);
+        routeRegistry.renounceOwnership();
+    }
+
     function testFuzz_SetRoute_RoundTrips(
         address vault,
         address adapter,

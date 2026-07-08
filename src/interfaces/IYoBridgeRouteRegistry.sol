@@ -29,6 +29,7 @@ interface IYoBridgeRouteRegistry {
     );
 
     error ZeroAddress();
+    error RenounceDisabled();
 
     /// @notice Allow or disallow a single bridge route. Owner-only.
     /// @param vault         The YO vault the route applies to.

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import { IYoCcipAdapter } from "src/interfaces/IYoCcipAdapter.sol";
+
 import { Integration_Test } from "../../Integration.t.sol";
 
 contract Send_CcipAdapter_Integration_Fuzz_Test is Integration_Test {
@@ -67,6 +69,30 @@ contract Send_CcipAdapter_Integration_Fuzz_Test is Integration_Test {
         assertEq(usdc.balanceOf(users.vault), vaultBefore - amount - fee, "vault debit");
         assertEq(usdc.balanceOf(address(mockCcipRouter)), amount + fee, "router credit");
         assertZeroAllowance(address(usdc), address(ccipAdapter), address(mockCcipRouter));
+    }
+
+    function testFuzz_Send_RevertWhen_RecipientNotEvmAddress(bytes32 dirtyRecipient) external {
+        vm.assume(uint256(dirtyRecipient) >> 160 != 0); // has bits above the low 160
+        uint64 destSelector = defaults.CCIP_DEST_SELECTOR();
+        uint256 amount = defaults.BRIDGE_AMOUNT();
+        // Allowlist the dirty recipient so the route check passes and the EVM-address guard is reached.
+        _allowRoute(users.vault, address(ccipAdapter), address(usdc), destSelector, dirtyRecipient);
+
+        vm.prank(users.vault);
+        vm.expectRevert(abi.encodeWithSelector(IYoCcipAdapter.RecipientNotEvmAddress.selector, dirtyRecipient));
+        ccipAdapter.send(destSelector, dirtyRecipient, address(usdc), amount, address(link), 0, "");
+    }
+
+    function testFuzz_Send_RevertWhen_NativeValueWithTokenFee(uint256 value) external {
+        value = bound(value, 1, 5 ether);
+        vm.deal(users.vault, value);
+        uint64 destSelector = defaults.CCIP_DEST_SELECTOR();
+        bytes32 recipient = defaults.BRIDGE_RECIPIENT();
+        uint256 amount = defaults.BRIDGE_AMOUNT();
+
+        vm.prank(users.vault);
+        vm.expectRevert(abi.encodeWithSelector(IYoCcipAdapter.UnexpectedNativeValue.selector, value));
+        ccipAdapter.send{ value: value }(destSelector, recipient, address(usdc), amount, address(link), 1e18, "");
     }
 
     function testFuzz_Send_RevertWhen_FeeExceedsMax(uint256 fee, uint256 maxFee) external {

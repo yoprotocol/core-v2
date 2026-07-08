@@ -15,12 +15,22 @@ pragma solidity 0.8.34;
 ///             path, `middleToken` for the swap path);
 ///           - the order's refund owner (`trader`) is the calling vault, so source-chain refunds
 ///             return to the vault;
+///           - the order pays NO referrer (`referrerAddr == 0` and `referrerBps == 0`), closing the
+///             only fill-time channel that could pay value to an operator-chosen address;
+///           - the order carries NO `customPayload` (it must be empty) — only plain transfers are
+///             permitted, never a destination-side payload/hook;
 ///           - the order's `(destChainId, destAddr)` is an allowlisted route in
 ///             `YoBridgeRouteRegistry`, keyed on the vault's outgoing `tokenIn` (`destChainId` is a
 ///             Wormhole chain id).
 ///         `minAmountOut`, `middleToken`, `minMiddleAmount`, and the swap route stay
 ///         operator-supplied (cosigner-gated), as with the swap adapter's economic parameters. The
 ///         swap protocol is additionally gated by the Forwarder's own whitelist.
+///
+///         ROUTE GRANULARITY: the route is always keyed on the vault's OUTGOING `tokenIn` — for the
+///         swap path this is the source token, not the transient `middleToken` that is bridged
+///         (`middleToken` is only constrained to equal the order's input token, and bounded by
+///         `minMiddleAmount` + the Forwarder's swap-protocol whitelist). Destination and refund owner
+///         are enforced regardless, so funds still land at the allowlisted recipient as the vault.
 ///
 ///         Scope: `mayanProtocol` is pinned to Swift and only `createOrderWithToken` is accepted;
 ///         other Mayan protocols / order functions and native-input paths are rejected by the
@@ -34,6 +44,8 @@ interface IYoMayanAdapter {
     error UnsupportedProtocolData(bytes4 selector);
     error ProtocolDataMismatch();
     error TraderNotVault(bytes32 trader);
+    error ReferrerNotAllowed(bytes32 referrerAddr, uint8 referrerBps);
+    error CustomPayloadNotAllowed(uint256 length);
     error RouteNotAllowed(address tokenIn, uint16 destChainId, bytes32 destAddr);
 
     /// @notice Parameters for a swap-then-bridge via `swapAndForwardERC20`.

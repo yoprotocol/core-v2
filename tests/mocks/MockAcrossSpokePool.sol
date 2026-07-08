@@ -25,6 +25,7 @@ contract MockAcrossSpokePool {
     uint32 public fillDeadline;
     uint32 public exclusivityDeadline;
     bytes public message;
+    bytes public lastCalldata;
     uint256 public callCount;
 
     /// @dev `deposit(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,uint32,bytes)`.
@@ -40,6 +41,7 @@ contract MockAcrossSpokePool {
 
         _recordStatics();
         _recordMessage();
+        lastCalldata = msg.data;
 
         IERC20(address(uint160(uint256(inputToken)))).safeTransferFrom(msg.sender, address(this), inputAmount);
         ++callCount;

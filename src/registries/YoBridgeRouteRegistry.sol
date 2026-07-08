@@ -23,6 +23,12 @@ contract YoBridgeRouteRegistry is Ownable2Step, IYoBridgeRouteRegistry {
         }
     }
 
+    /// @notice Disabled — renouncing ownership would freeze every allowed route irrevocably (routes
+    ///         could never be revoked), an open failure mode. Ownership can still be transferred.
+    function renounceOwnership() public pure override {
+        revert RenounceDisabled();
+    }
+
     /// @inheritdoc IYoBridgeRouteRegistry
     function setRoute(
         address vault,

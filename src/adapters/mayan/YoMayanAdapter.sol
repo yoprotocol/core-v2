@@ -17,9 +17,11 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 /// @dev    INVARIANTS:
 ///           - `msg.sender` is the vault when invoked via `YoVault.manage(...)`.
 ///           - Only Swift `createOrderWithToken` is accepted; the selector guard is fail-closed.
-///           - The forwarded order's refund owner (`trader`) is the vault and its `(destChainId,
-///             destAddr)` is an allowlisted route, so neither the output nor a refund can be
-///             redirected off the vault.
+///           - The forwarded order's refund owner (`trader`) is the vault, it pays no referrer
+///             (`referrerAddr`/`referrerBps` forced to zero), carries no `customPayload` (empty), and
+///             its `(destChainId, destAddr)` is an allowlisted route — so neither the output, a
+///             refund, nor a referral fee can be redirected off the vault, and no destination-side
+///             payload can be attached.
 ///           - Each call leaks zero new balance / zero allowance to the Forwarder; pre-existing dust
 ///             is recoverable by registered YO vaults via `rescue` / `rescueETH` (see {YoAdapterBase}).
 contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
@@ -122,8 +124,10 @@ contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
         );
     }
 
-    /// @dev Decode Mayan data as a Swift `createOrderWithToken` order, enforcing the selector
-    ///      fail-closed. Returns the order's declared input token, amount, and params.
+    /// @dev Decode Mayan data as a Swift V2 `createOrderWithToken` order, enforcing the selector
+    ///      fail-closed. Returns the order's declared input token, amount, and params. The trailing
+    ///      `customPayload` is decoded and required to be empty — only plain transfers are permitted,
+    ///      never a destination-side payload/hook.
     function _decodeOrder(bytes calldata data)
         private
         pure
@@ -132,7 +136,12 @@ contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
         if (data.length < 4 || bytes4(data) != IMayanSwift.createOrderWithToken.selector) {
             revert UnsupportedProtocolData(data.length < 4 ? bytes4(0) : bytes4(data));
         }
-        (orderTokenIn, orderAmountIn, params) = abi.decode(data[4:], (address, uint256, IMayanSwift.OrderParams));
+        bytes memory customPayload;
+        (orderTokenIn, orderAmountIn, params, customPayload) =
+            abi.decode(data[4:], (address, uint256, IMayanSwift.OrderParams, bytes));
+        if (customPayload.length != 0) {
+            revert CustomPayloadNotAllowed(customPayload.length);
+        }
     }
 
     /// @dev Enforce the order's refund owner is the vault and its destination is an allowlisted route
@@ -147,6 +156,11 @@ contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
     {
         if (params.trader != bytes32(uint256(uint160(vault)))) {
             revert TraderNotVault(params.trader);
+        }
+        // Forbid any referrer payout — Swift pays `referrerBps` of the fill to `referrerAddr` at
+        // settlement, which would let an operator skim value to an arbitrary address.
+        if (params.referrerBps != 0 || params.referrerAddr != bytes32(0)) {
+            revert ReferrerNotAllowed(params.referrerAddr, params.referrerBps);
         }
         if (!routeRegistry.isRouteAllowed(vault, address(this), routeToken, params.destChainId, params.destAddr)) {
             revert RouteNotAllowed(routeToken, params.destChainId, params.destAddr);

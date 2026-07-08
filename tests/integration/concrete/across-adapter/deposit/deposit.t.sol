@@ -87,6 +87,12 @@ contract Deposit_AcrossAdapter_Integration_Concrete_Test is Integration_Test {
         assertEq(mockSpokePool.fillDeadline(), p.fillDeadline, "fillDeadline mismatch");
         assertEq(mockSpokePool.exclusivityDeadline(), p.exclusivityDeadline, "exclusivityDeadline mismatch");
         assertEq(mockSpokePool.message(), p.message, "message mismatch");
+        // it should append the Across referral tag (delimiter 0x1dc0de + integrator id 0x0088)
+        bytes memory cd = mockSpokePool.lastCalldata();
+        bytes memory tag = hex"1dc0de0088";
+        for (uint256 i = 0; i < tag.length; ++i) {
+            assertEq(cd[cd.length - tag.length + i], tag[i], "referral tag not appended");
+        }
         // it should reset spokePool allowance to zero / leave zero inputToken in the adapter
         assertZeroAllowance(address(usdc), address(acrossAdapter), address(mockSpokePool));
         assertZeroBalance(address(usdc), address(acrossAdapter));

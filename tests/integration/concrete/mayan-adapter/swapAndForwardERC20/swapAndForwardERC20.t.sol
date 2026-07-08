@@ -24,22 +24,23 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
     /// @dev Build a Swift order whose declared input token is `orderTokenIn` (the middle token).
     function _order(address orderTokenIn, bytes32 trader, bytes32 destAddr) internal view returns (bytes memory) {
         IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
+            payloadType: 1,
             trader: trader,
+            destAddr: destAddr,
+            destChainId: destChain,
+            referrerAddr: bytes32(0),
             tokenOut: bytes32(uint256(uint160(address(usdc)))),
             minAmountOut: 1,
             gasDrop: 0,
             cancelFee: 0,
             refundFee: 0,
             deadline: uint64(block.timestamp + 1 hours),
-            destAddr: destAddr,
-            destChainId: destChain,
-            referrerAddr: bytes32(0),
             referrerBps: 0,
             auctionMode: 2,
             random: bytes32(uint256(1))
         });
         // The order amount is a placeholder; the Forwarder rewrites it with the swap output.
-        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, uint256(0), o);
+        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, uint256(0), o, "");
     }
 
     function _vaultTrader() internal view returns (bytes32) {

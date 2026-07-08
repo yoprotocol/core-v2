@@ -32,21 +32,22 @@ contract ForwardERC20_MayanAdapter_Integration_Concrete_Test is Integration_Test
         returns (bytes memory)
     {
         IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
+            payloadType: 1,
             trader: trader,
+            destAddr: destAddr,
+            destChainId: destChainId,
+            referrerAddr: bytes32(0),
             tokenOut: bytes32(uint256(uint160(address(usdt)))),
             minAmountOut: 1,
             gasDrop: 0,
             cancelFee: 0,
             refundFee: 0,
             deadline: uint64(block.timestamp + 1 hours),
-            destAddr: destAddr,
-            destChainId: destChainId,
-            referrerAddr: bytes32(0),
             referrerBps: 0,
             auctionMode: 2,
             random: bytes32(uint256(1))
         });
-        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, orderAmountIn, o);
+        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, orderAmountIn, o, "");
     }
 
     function _vaultTrader() internal view returns (bytes32) {

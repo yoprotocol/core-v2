@@ -52,56 +52,33 @@ contract MayanForkTest is Fork_Test {
         _vaultApprove(USDC, address(adapter), type(uint256).max);
     }
 
-    function _orderData() internal view returns (bytes memory) {
-        IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
-            trader: bytes32(uint256(uint160(address(yoVault)))),
-            tokenOut: bytes32(uint256(uint160(USDC_BASE))),
-            minAmountOut: uint64(BRIDGE_AMOUNT - 100e6),
-            gasDrop: 0,
-            cancelFee: 0,
-            refundFee: 0,
-            deadline: uint64(block.timestamp + 1 hours),
-            destAddr: recipient,
-            destChainId: BASE_WORMHOLE_CHAIN,
-            referrerAddr: bytes32(0),
-            referrerBps: 0,
-            auctionMode: 2,
-            random: bytes32(uint256(1))
-        });
-        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, address(USDC), BRIDGE_AMOUNT, o);
-    }
-
-    function test_Fork_Mayan_ForwardERC20() external {
-        uint256 vaultBefore = USDC.balanceOf(address(yoVault));
-
-        bytes memory call = abi.encodeCall(YoMayanAdapter.forwardERC20, (address(USDC), BRIDGE_AMOUNT, _orderData()));
-        uint256 forwarded = abi.decode(_opManage(address(adapter), call), (uint256));
-
-        assertEq(forwarded, BRIDGE_AMOUNT, "return");
-        assertEq(USDC.balanceOf(address(yoVault)), vaultBefore - BRIDGE_AMOUNT, "vault not debited");
-        // Adapter retains nothing and leaks no allowance.
-        assertEq(USDC.balanceOf(address(adapter)), 0, "adapter leaked USDC");
-        assertEq(USDC.allowance(address(adapter), address(FORWARDER)), 0, "adapter leaked allowance");
-    }
+    // NOTE: there is intentionally no live "happy path" fork test that creates a Swift order here.
+    // A synthetic order cannot pass real Swift V2 validation (registered-emitter, normalized-amount,
+    // and fee checks), and a captured real SDK order carries a `deadline` that expires, which would
+    // make a pinned fork fixture flaky. The forward path is instead validated deterministically in
+    // `tests/integration/fuzz/mayan-adapter/forward.t.sol::test_ForwardERC20_RealSdkPayload`, which
+    // decodes an actual `getSwapFromEvmTxPayload` order and asserts our field extraction. This fork
+    // test covers the on-chain route guard against the real Forwarder/Swift deployment.
 
     function test_Fork_Mayan_RevertWhen_RouteNotAllowed() external {
         IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
+            payloadType: 1,
             trader: bytes32(uint256(uint160(address(yoVault)))),
+            destAddr: bytes32(uint256(0xDEAD)),
+            destChainId: BASE_WORMHOLE_CHAIN,
+            referrerAddr: bytes32(0),
             tokenOut: bytes32(uint256(uint160(USDC_BASE))),
             minAmountOut: uint64(BRIDGE_AMOUNT - 100e6),
             gasDrop: 0,
             cancelFee: 0,
             refundFee: 0,
             deadline: uint64(block.timestamp + 1 hours),
-            destAddr: bytes32(uint256(0xDEAD)),
-            destChainId: BASE_WORMHOLE_CHAIN,
-            referrerAddr: bytes32(0),
             referrerBps: 0,
             auctionMode: 2,
             random: bytes32(uint256(1))
         });
         bytes memory data =
-            abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, address(USDC), BRIDGE_AMOUNT, o);
+            abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, address(USDC), BRIDGE_AMOUNT, o, "");
 
         bytes memory call = abi.encodeCall(YoMayanAdapter.forwardERC20, (address(USDC), BRIDGE_AMOUNT, data));
         authority.setAllowed(users.operator, address(adapter), YoMayanAdapter.forwardERC20.selector, true);

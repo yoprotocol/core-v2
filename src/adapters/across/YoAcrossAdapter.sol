@@ -24,6 +24,12 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
     using SafeERC20 for IERC20;
     using Address for address;
 
+    /// @dev Across integrator-ID tag appended to the deposit calldata for referral attribution: the
+    ///      Across delimiter (`0x1dc0de`) followed by YO's 2-byte integrator id (`0x0088`). It trails
+    ///      the ABI-encoded arguments, so the SpokePool decoder ignores it while Across's off-chain
+    ///      indexer reads it for integrator attribution.
+    bytes private constant _REFERRAL_TAG = hex"1dc0de0088";
+
     /// @notice The Across `SpokePool` this adapter deposits into.
     IAcrossSpokePool public immutable spokePool;
 
@@ -63,51 +69,28 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
         return params.inputAmount;
     }
 
-    /// @dev ABI offset to the dynamic `message` tail: 12 head words × 32 bytes.
-    uint256 private constant _MESSAGE_OFFSET = 12 * 32;
-
-    /// @dev Forward the deposit to the SpokePool. The 12-argument `deposit` cannot be ABI-encoded as
-    ///      a direct external call with the optimizer off (the `lite` profile): the encoder runs one
-    ///      slot over the stack limit. To stay within it the calldata is assembled from shallow
-    ///      pieces — two ≤6-field static chunks (the 11 leading args), the ABI offset word pointing
-    ///      to the tail, and the trailing dynamic `message` encoded by hand as `[length][data]`
-    ///      right-padded to a 32-byte boundary. (`abi.encode(message)` cannot be used for the tail: it
-    ///      prepends its own offset word, which would corrupt the argument the head offset points at.)
-    ///
-    ///      Called internally (no `CALL`), so `msg.sender` is still the vault — forced as `depositor`
-    ///      so origin-chain refunds return to it.
+    /// @dev Forward the deposit to the SpokePool. Called internally (no `CALL`), so `msg.sender` is
+    ///      still the vault — forced as `depositor` so origin-chain refunds return to it. The calldata
+    ///      is built with `abi.encodeCall` (compile-time type-checked against the SpokePool ABI) and
+    ///      dispatched with a low-level call so the referral tag can trail the encoded arguments.
     function _forwardDeposit(DepositParams calldata params) private {
-        bytes memory head = bytes.concat(
-            abi.encode(
+        bytes memory data = abi.encodeCall(
+            IAcrossSpokePool.deposit,
+            (
                 bytes32(uint256(uint160(msg.sender))),
                 params.recipient,
                 bytes32(uint256(uint160(params.inputToken))),
                 params.outputToken,
                 params.inputAmount,
-                params.outputAmount
-            ),
-            abi.encode(
+                params.outputAmount,
                 params.destinationChainId,
                 params.exclusiveRelayer,
                 params.quoteTimestamp,
                 params.fillDeadline,
-                params.exclusivityDeadline
+                params.exclusivityDeadline,
+                params.message
             )
         );
-
-        // Dynamic `bytes` tail: length word + raw data, right-padded to the next 32-byte boundary.
-        bytes memory data = bytes.concat(
-            IAcrossSpokePool.deposit.selector,
-            head,
-            bytes32(_MESSAGE_OFFSET),
-            bytes32(params.message.length),
-            params.message
-        );
-        uint256 remainder = params.message.length % 32;
-        if (remainder != 0) {
-            data = bytes.concat(data, new bytes(32 - remainder));
-        }
-
-        address(spokePool).functionCall(data);
+        address(spokePool).functionCall(bytes.concat(data, _REFERRAL_TAG));
     }
 }

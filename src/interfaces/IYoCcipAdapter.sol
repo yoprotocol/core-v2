@@ -20,6 +20,11 @@ interface IYoCcipAdapter {
     error RouteNotAllowed(address token, uint64 destinationChainSelector, bytes32 recipient);
     error FeeExceedsMax(uint256 fee, uint256 maxFee);
     error IncorrectNativeFee(uint256 sent, uint256 required);
+    /// @dev `recipient` has non-zero bits above 160 — it is not a left-padded EVM address, but the
+    ///      CCIP message delivers to the truncated `address(uint160(...))`. Reject to fail closed.
+    error RecipientNotEvmAddress(bytes32 recipient);
+    /// @dev Native value was sent alongside an ERC-20 fee token (it would strand in the adapter).
+    error UnexpectedNativeValue(uint256 sent);
 
     /// @notice Send `amount` of `token` to `recipient` on `destinationChainSelector` via CCIP.
     /// @dev    Reverts unless the `(token, destinationChainSelector, recipient)` route is allowlisted
