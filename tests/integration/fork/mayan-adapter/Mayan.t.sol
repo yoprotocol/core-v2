@@ -7,8 +7,11 @@ import { YoMayanAdapter } from "src/adapters/mayan/YoMayanAdapter.sol";
 import { IMayanForwarder } from "src/interfaces/external/IMayanForwarder.sol";
 import { IMayanSwift } from "src/interfaces/external/IMayanSwift.sol";
 import { IYoBridgeRouteRegistry } from "src/interfaces/IYoBridgeRouteRegistry.sol";
+import { IYoSwapOracle } from "src/interfaces/IYoSwapOracle.sol";
+import { IYoSwapPairRegistry } from "src/interfaces/IYoSwapPairRegistry.sol";
 import { YoBridgeRouteRegistry } from "src/registries/YoBridgeRouteRegistry.sol";
 
+import { MockSwapOracle } from "../../../mocks/MockSwapOracle.sol";
 import { Fork_Test } from "../Fork_Test.t.sol";
 
 /// @notice End-to-end: real YoVault → YoMayanAdapter → real Mayan Forwarder + Swift on Ethereum
@@ -36,7 +39,19 @@ contract MayanForkTest is Fork_Test {
 
         vm.prank(users.owner);
         routeRegistry = new YoBridgeRouteRegistry(users.owner);
-        adapter = new YoMayanAdapter(FORWARDER, SWIFT, IYoBridgeRouteRegistry(address(routeRegistry)), yoRegistry);
+        // Swap-leg oracle/pair-registry are unused by the direct `forwardERC20` path exercised here;
+        // pass the stack's pair registry and a mock oracle to satisfy construction.
+        adapter = new YoMayanAdapter(
+            YoMayanAdapter.InitParams({
+                forwarder: FORWARDER,
+                swiftProtocol: SWIFT,
+                routeRegistry: IYoBridgeRouteRegistry(address(routeRegistry)),
+                oracle: IYoSwapOracle(address(new MockSwapOracle())),
+                pairRegistry: IYoSwapPairRegistry(address(pairRegistry)),
+                maxSlippageBps: 50,
+                yoRegistry: yoRegistry
+            })
+        );
 
         vm.label(address(adapter), "YoMayanAdapter");
         vm.label(address(FORWARDER), "MayanForwarder");
@@ -46,7 +61,15 @@ contract MayanForkTest is Fork_Test {
         recipient = bytes32(uint256(uint160(address(yoVault))));
 
         vm.prank(users.owner);
-        routeRegistry.setRoute(address(yoVault), address(adapter), address(USDC), BASE_WORMHOLE_CHAIN, recipient, true);
+        routeRegistry.setRoute(
+            address(yoVault),
+            address(adapter),
+            address(USDC),
+            BASE_WORMHOLE_CHAIN,
+            recipient,
+            bytes32(uint256(uint160(USDC_BASE))),
+            true
+        );
 
         deal(address(USDC), address(yoVault), BRIDGE_AMOUNT);
         _vaultApprove(USDC, address(adapter), type(uint256).max);

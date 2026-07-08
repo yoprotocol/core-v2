@@ -8,7 +8,11 @@ SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test
    │  └── it should revert with TraderNotVault
    ├── when route not allowed
    │  └── it should revert with RouteNotAllowed
-   └── when order valid and route allowed
+   ├── when swap pair disallowed
+   │  └── it should revert with PairNotAllowed
+   ├── when minMiddleAmount below oracle floor
+   │  └── it should revert with SlippageTooLow
+   └── when valid and within slippage
       ├── it should pull amountIn from the vault
       ├── it should forward swap params and mayanData to the forwarder
       ├── it should reset forwarder allowance to zero

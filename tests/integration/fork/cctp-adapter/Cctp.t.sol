@@ -42,7 +42,9 @@ contract CctpForkTest is Fork_Test {
         recipient = bytes32(uint256(uint160(address(yoVault))));
 
         vm.prank(users.owner);
-        routeRegistry.setRoute(address(yoVault), address(adapter), address(USDC), BASE_DOMAIN, recipient, true);
+        routeRegistry.setRoute(
+            address(yoVault), address(adapter), address(USDC), BASE_DOMAIN, recipient, bytes32(0), true
+        );
 
         deal(address(USDC), address(yoVault), BRIDGE_AMOUNT);
         _vaultApprove(USDC, address(adapter), type(uint256).max);

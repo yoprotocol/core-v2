@@ -31,7 +31,8 @@ abstract contract Integration_Test is Base_Test {
             address(acrossAdapter),
             address(usdc),
             defaults.ACROSS_DEST_CHAIN_ID(),
-            defaults.BRIDGE_RECIPIENT()
+            defaults.BRIDGE_RECIPIENT(),
+            bytes32(uint256(uint160(address(usdt))))
         );
         _allowRoute(
             users.vault, address(cctpAdapter), address(usdc), defaults.CCTP_DEST_DOMAIN(), defaults.BRIDGE_RECIPIENT()
@@ -44,7 +45,8 @@ abstract contract Integration_Test is Base_Test {
             address(mayanAdapter),
             address(usdc),
             defaults.MAYAN_DEST_WORMHOLE_CHAIN(),
-            defaults.BRIDGE_RECIPIENT()
+            defaults.BRIDGE_RECIPIENT(),
+            bytes32(uint256(uint160(address(usdc))))
         );
 
         // Default yield-vault allowlist + USDC approvals. The IPOR PlasmaVault reuses the shared

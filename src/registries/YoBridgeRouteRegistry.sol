@@ -36,6 +36,7 @@ contract YoBridgeRouteRegistry is Ownable2Step, IYoBridgeRouteRegistry {
         address token,
         uint256 destinationId,
         bytes32 recipient,
+        bytes32 outputToken,
         bool allowed
     )
         external
@@ -44,8 +45,8 @@ contract YoBridgeRouteRegistry is Ownable2Step, IYoBridgeRouteRegistry {
         if (vault == address(0) || adapter == address(0) || token == address(0)) {
             revert ZeroAddress();
         }
-        _routes[_routeId(vault, adapter, token, destinationId, recipient)] = allowed;
-        emit RouteSet(vault, adapter, token, destinationId, recipient, allowed);
+        _routes[_routeId(vault, adapter, token, destinationId, recipient, outputToken)] = allowed;
+        emit RouteSet(vault, adapter, token, destinationId, recipient, outputToken, allowed);
     }
 
     /// @inheritdoc IYoBridgeRouteRegistry
@@ -54,28 +55,32 @@ contract YoBridgeRouteRegistry is Ownable2Step, IYoBridgeRouteRegistry {
         address adapter,
         address token,
         uint256 destinationId,
-        bytes32 recipient
+        bytes32 recipient,
+        bytes32 outputToken
     )
         external
         view
         returns (bool)
     {
-        return _routes[_routeId(vault, adapter, token, destinationId, recipient)];
+        return _routes[_routeId(vault, adapter, token, destinationId, recipient, outputToken)];
     }
 
     /// @dev Hash of a route tuple, used as the `_routes` key. `abi.encode` (not `encodePacked`)
-    ///      guarantees an unambiguous, collision-free encoding of the five fields.
+    ///      guarantees an unambiguous, collision-free encoding of the six fields. `outputToken` pins
+    ///      the destination token an adapter presents (Across `outputToken`, Mayan order `tokenOut`);
+    ///      adapters that do not pin it (CCIP/CCTP) pass `bytes32(0)`.
     function _routeId(
         address vault,
         address adapter,
         address token,
         uint256 destinationId,
-        bytes32 recipient
+        bytes32 recipient,
+        bytes32 outputToken
     )
         private
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encode(vault, adapter, token, destinationId, recipient));
+        return keccak256(abi.encode(vault, adapter, token, destinationId, recipient, outputToken));
     }
 }

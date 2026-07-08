@@ -8,7 +8,7 @@ pragma solidity 0.8.34;
 ///         registry is the on-chain destination floor: an adapter may only let `vault` send `token`
 ///         to `(destinationId, recipient)` if the multisig has explicitly allowlisted that route.
 ///
-///         A route is keyed on five fields:
+///         A route is keyed on six fields:
 ///           - `vault`         — the calling YO vault.
 ///           - `adapter`       — the bridge adapter (`address(this)` inside the adapter). Namespaces
 ///                               routes per bridge so an Across route for chainId 8453 can never be
@@ -18,6 +18,11 @@ pragma solidity 0.8.34;
 ///                               (Across chainId, CCIP chain selector, CCTP domain).
 ///           - `recipient`     — the destination recipient, widened to `bytes32` (an EVM address is
 ///                               left-padded to 32 bytes).
+///           - `outputToken`   — the destination-chain token the adapter presents, widened to
+///                               `bytes32`. Adapters where the operator names the delivered token
+///                               (Across `outputToken`, Mayan order `tokenOut`) pass it here so the
+///                               multisig pins the destination asset's identity; adapters where the
+///                               protocol fixes the output (CCIP, CCTP) pass `bytes32(0)`.
 interface IYoBridgeRouteRegistry {
     event RouteSet(
         address indexed vault,
@@ -25,6 +30,7 @@ interface IYoBridgeRouteRegistry {
         address indexed token,
         uint256 destinationId,
         bytes32 recipient,
+        bytes32 outputToken,
         bool allowed
     );
 
@@ -37,6 +43,7 @@ interface IYoBridgeRouteRegistry {
     /// @param token         The asset being bridged.
     /// @param destinationId The bridge's destination identifier, widened to `uint256`.
     /// @param recipient     The destination recipient, widened to `bytes32`.
+    /// @param outputToken   The pinned destination token, widened to `bytes32` (`0` when unpinned).
     /// @param allowed       `true` to allow the route, `false` to revoke it.
     function setRoute(
         address vault,
@@ -44,18 +51,21 @@ interface IYoBridgeRouteRegistry {
         address token,
         uint256 destinationId,
         bytes32 recipient,
+        bytes32 outputToken,
         bool allowed
     )
         external;
 
-    /// @notice Whether `vault` may bridge `token` to `(destinationId, recipient)` via `adapter`.
+    /// @notice Whether `vault` may bridge `token` to `(destinationId, recipient)` delivering
+    ///         `outputToken` via `adapter`.
     /// @dev    Defaults to `false` for every unset route.
     function isRouteAllowed(
         address vault,
         address adapter,
         address token,
         uint256 destinationId,
-        bytes32 recipient
+        bytes32 recipient,
+        bytes32 outputToken
     )
         external
         view

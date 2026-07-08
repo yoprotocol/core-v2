@@ -9,6 +9,8 @@ import { IMayanSwift } from "../../interfaces/external/IMayanSwift.sol";
 import { IYoBridgeRouteRegistry } from "../../interfaces/IYoBridgeRouteRegistry.sol";
 import { IYoMayanAdapter } from "../../interfaces/IYoMayanAdapter.sol";
 import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
+import { IYoSwapOracle } from "../../interfaces/IYoSwapOracle.sol";
+import { IYoSwapPairRegistry } from "../../interfaces/IYoSwapPairRegistry.sol";
 import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 
 /// @title  YoMayanAdapter
@@ -19,13 +21,38 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///           - Only Swift `createOrderWithToken` is accepted; the selector guard is fail-closed.
 ///           - The forwarded order's refund owner (`trader`) is the vault, it pays no referrer
 ///             (`referrerAddr`/`referrerBps` forced to zero), carries no `customPayload` (empty), and
-///             its `(destChainId, destAddr)` is an allowlisted route — so neither the output, a
-///             refund, nor a referral fee can be redirected off the vault, and no destination-side
-///             payload can be attached.
+///             its `(destChainId, destAddr, tokenOut)` is an allowlisted route (the destination token
+///             is part of the route key) — so neither the output, its token, a refund, nor a referral
+///             fee can be redirected off the vault, and no destination-side payload can be attached.
+///           - `swapAndForwardERC20`'s source swap is oracle-floored via `YoSwapPairRegistry` +
+///             `YoSwapOracle` + `maxSlippageBps`, so the operator cannot drain the vault through a
+///             fake or underpriced middle token. The cross-chain `minAmountOut` remains
+///             operator/cosigner-trusted (not floorable on the source chain).
 ///           - Each call leaks zero new balance / zero allowance to the Forwarder; pre-existing dust
 ///             is recoverable by registered YO vaults via `rescue` / `rescueETH` (see {YoAdapterBase}).
 contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
     using SafeERC20 for IERC20;
+
+    uint256 internal constant BPS_DENOMINATOR = 10_000;
+
+    /// @notice Immutable construction config. A struct keeps the constructor within the ≤5-positional
+    ///         convention while carrying both the bridge wiring and the swap-floor wiring.
+    /// @param forwarder      Mayan Forwarder the adapter forwards through.
+    /// @param swiftProtocol  The single Mayan protocol (Swift) the adapter targets.
+    /// @param routeRegistry  Destination allowlist `(vault, adapter, tokenIn, destChainId, destAddr)`.
+    /// @param oracle         Price oracle flooring the source-swap leg.
+    /// @param pairRegistry   Per-vault swap-pair allowlist for the source-swap leg.
+    /// @param maxSlippageBps Max slippage (bps) tolerated on an `ORACLE_CHECKED` source swap.
+    /// @param yoRegistry     YO registry consulted for `rescue` auth (see {YoAdapterBase}).
+    struct InitParams {
+        IMayanForwarder forwarder;
+        address swiftProtocol;
+        IYoBridgeRouteRegistry routeRegistry;
+        IYoSwapOracle oracle;
+        IYoSwapPairRegistry pairRegistry;
+        uint256 maxSlippageBps;
+        IYoRegistry yoRegistry;
+    }
 
     /// @notice The Mayan Forwarder this adapter forwards through.
     IMayanForwarder public immutable forwarder;
@@ -36,17 +63,22 @@ contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
     /// @notice Allowlist of permitted `(vault, adapter, tokenIn, destChainId, destAddr)` routes.
     IYoBridgeRouteRegistry public immutable routeRegistry;
 
-    constructor(
-        IMayanForwarder _forwarder,
-        address _swiftProtocol,
-        IYoBridgeRouteRegistry _routeRegistry,
-        IYoRegistry _yoRegistry
-    )
-        YoAdapterBase(_yoRegistry)
-    {
-        forwarder = _forwarder;
-        swiftProtocol = _swiftProtocol;
-        routeRegistry = _routeRegistry;
+    /// @notice Oracle flooring the source-swap leg of `swapAndForwardERC20`.
+    IYoSwapOracle public immutable oracle;
+
+    /// @notice Per-vault swap-pair allowlist governing the source-swap leg.
+    IYoSwapPairRegistry public immutable pairRegistry;
+
+    /// @notice Max slippage (bps) tolerated on an `ORACLE_CHECKED` source swap.
+    uint256 public immutable maxSlippageBps;
+
+    constructor(InitParams memory p) YoAdapterBase(p.yoRegistry) {
+        forwarder = p.forwarder;
+        swiftProtocol = p.swiftProtocol;
+        routeRegistry = p.routeRegistry;
+        oracle = p.oracle;
+        pairRegistry = p.pairRegistry;
+        maxSlippageBps = p.maxSlippageBps;
     }
 
     /// @inheritdoc IYoMayanAdapter
@@ -95,6 +127,7 @@ contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
             revert ProtocolDataMismatch();
         }
         _checkTraderAndRoute(msg.sender, params.tokenIn, order);
+        _checkSwapFloor(msg.sender, params.tokenIn, params.middleToken, params.amountIn, params.minMiddleAmount);
 
         IERC20(params.tokenIn).safeTransferFrom(msg.sender, address(this), params.amountIn);
         IERC20(params.tokenIn).forceApprove(address(forwarder), params.amountIn);
@@ -144,6 +177,35 @@ contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
         }
     }
 
+    /// @dev Floor the source-swap leg exactly as `YoSwapAdapter` does: the `(tokenIn, middleToken)`
+    ///      pair must be allowlisted, and when `ORACLE_CHECKED` the operator's `minMiddleAmount` must
+    ///      clear the oracle quote less `maxSlippageBps`. This pins both the middle-token identity
+    ///      (an attacker-controlled fake token has no allowlisted pair / oracle feed) and its fair
+    ///      value, so the swap cannot be used to divert the vault's funds. `OPERATOR_TRUSTED` pairs
+    ///      skip the oracle for exotic assets the multisig has explicitly opted into.
+    function _checkSwapFloor(
+        address vault,
+        address tokenIn,
+        address middleToken,
+        uint256 amountIn,
+        uint256 minMiddleAmount
+    )
+        private
+        view
+    {
+        IYoSwapPairRegistry.PairMode mode = pairRegistry.modeOf(vault, tokenIn, middleToken);
+        if (mode == IYoSwapPairRegistry.PairMode.DISALLOWED) {
+            revert PairNotAllowed(tokenIn, middleToken);
+        }
+        if (mode == IYoSwapPairRegistry.PairMode.ORACLE_CHECKED) {
+            uint256 floor = (oracle.getQuote(tokenIn, middleToken, amountIn) * (BPS_DENOMINATOR - maxSlippageBps))
+                / BPS_DENOMINATOR;
+            if (minMiddleAmount < floor) {
+                revert SlippageTooLow(minMiddleAmount, floor);
+            }
+        }
+    }
+
     /// @dev Enforce the order's refund owner is the vault and its destination is an allowlisted route
     ///      (keyed on the vault's outgoing `routeToken`).
     function _checkTraderAndRoute(
@@ -162,7 +224,11 @@ contract YoMayanAdapter is YoAdapterBase, IYoMayanAdapter {
         if (params.referrerBps != 0 || params.referrerAddr != bytes32(0)) {
             revert ReferrerNotAllowed(params.referrerAddr, params.referrerBps);
         }
-        if (!routeRegistry.isRouteAllowed(vault, address(this), routeToken, params.destChainId, params.destAddr)) {
+        // Pin the destination token: the order's `tokenOut` must be part of the allowlisted route,
+        // so a solver cannot deliver a worthless token to the recipient.
+        if (!routeRegistry.isRouteAllowed(
+                vault, address(this), routeToken, params.destChainId, params.destAddr, params.tokenOut
+            )) {
             revert RouteNotAllowed(routeToken, params.destChainId, params.destAddr);
         }
     }

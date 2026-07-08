@@ -21,10 +21,17 @@ pragma solidity 0.8.34;
 ///             permitted, never a destination-side payload/hook;
 ///           - the order's `(destChainId, destAddr)` is an allowlisted route in
 ///             `YoBridgeRouteRegistry`, keyed on the vault's outgoing `tokenIn` (`destChainId` is a
-///             Wormhole chain id).
-///         `minAmountOut`, `middleToken`, `minMiddleAmount`, and the swap route stay
-///         operator-supplied (cosigner-gated), as with the swap adapter's economic parameters. The
-///         swap protocol is additionally gated by the Forwarder's own whitelist.
+///             Wormhole chain id);
+///           - for `swapAndForwardERC20`, the source swap leg is oracle-floored: `(tokenIn,
+///             middleToken)` must be an allowlisted pair in `YoSwapPairRegistry` and, when
+///             `ORACLE_CHECKED`, `minMiddleAmount` must clear `YoSwapOracle`'s quote less
+///             `maxSlippageBps` — exactly the guarantee `YoSwapAdapter` gives operator-supplied swaps.
+///             This is what prevents an operator from draining the vault via a fake/underpriced
+///             middle token; the Forwarder itself only counts the (operator-named) middle token, so
+///             the token identity and its fair value must both be pinned here.
+///         The cross-chain `minAmountOut` delivered on the destination stays operator-supplied
+///         (cosigner-gated), as with the swap adapter's `minOut` and Across's `outputAmount` — it
+///         cannot be floored on the source chain.
 ///
 ///         ROUTE GRANULARITY: the route is always keyed on the vault's OUTGOING `tokenIn` — for the
 ///         swap path this is the source token, not the transient `middleToken` that is bridged
@@ -47,6 +54,8 @@ interface IYoMayanAdapter {
     error ReferrerNotAllowed(bytes32 referrerAddr, uint8 referrerBps);
     error CustomPayloadNotAllowed(uint256 length);
     error RouteNotAllowed(address tokenIn, uint16 destChainId, bytes32 destAddr);
+    error PairNotAllowed(address tokenIn, address middleToken);
+    error SlippageTooLow(uint256 minMiddleAmount, uint256 floor);
 
     /// @notice Parameters for a swap-then-bridge via `swapAndForwardERC20`.
     /// @param tokenIn         Token pulled from the vault and swapped.

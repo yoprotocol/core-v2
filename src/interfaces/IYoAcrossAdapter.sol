@@ -17,6 +17,8 @@ pragma solidity 0.8.34;
 interface IYoAcrossAdapter {
     error InvalidAmount();
     error RouteNotAllowed(address inputToken, uint256 destinationChainId, bytes32 recipient);
+    error MessageNotAllowed();
+    error SlippageTooLow(uint256 outputAmount, uint256 floor);
 
     /// @notice Parameters for an Across deposit. `depositor` is omitted — the adapter forces it to
     ///         the calling vault so origin-chain refunds return to the vault.
@@ -48,7 +50,13 @@ interface IYoAcrossAdapter {
     /// @notice Bridge `params.inputAmount` of `params.inputToken` to `params.recipient` on
     ///         `params.destinationChainId` via Across.
     /// @dev    Reverts unless the `(inputToken, destinationChainId, recipient)` route is allowlisted
-    ///         for the calling vault.
+    ///         for the calling vault. The relayer's delivery is binding, so the adapter floors it:
+    ///         `message` MUST be empty (no destination-side hook) and `outputAmount` MUST be
+    ///         `>= inputAmount * (1 - maxSlippageBps)` (caps the relayer fee; valid when `outputToken`
+    ///         is `inputToken`'s same-decimal canonical equivalent, which the multisig asserts per
+    ///         route). If a relayer can't fill within these terms the deposit expires and refunds to
+    ///         the vault (`depositor`). `outputToken`'s identity is not yet pinned on-chain — see the
+    ///         contract NatSpec.
     /// @return The amount of `inputToken` bridged (`inputAmount`).
     function deposit(DepositParams calldata params) external returns (uint256);
 }

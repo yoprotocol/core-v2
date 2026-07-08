@@ -64,7 +64,9 @@ contract YoCcipAdapter is YoAdapterBase, IYoCcipAdapter {
             revert InvalidAmount();
         }
         address vault = msg.sender;
-        if (!routeRegistry.isRouteAllowed(vault, address(this), token, destinationChainSelector, recipient)) {
+        // CCIP delivers the same token it transfers, so no output token is pinned (`bytes32(0)`).
+        if (!routeRegistry.isRouteAllowed(vault, address(this), token, destinationChainSelector, recipient, bytes32(0)))
+        {
             revert RouteNotAllowed(token, destinationChainSelector, recipient);
         }
         // Delivery truncates `recipient` to an EVM address; reject dirty high bits so the route check

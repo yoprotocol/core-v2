@@ -62,7 +62,10 @@ contract YoCctpAdapter is YoAdapterBase, IYoCctpAdapter {
             revert InvalidAmount();
         }
         address vault = msg.sender;
-        if (!routeRegistry.isRouteAllowed(vault, address(this), address(usdc), destinationDomain, mintRecipient)) {
+        // CCTP mints USDC on the destination, so no output token is pinned (`bytes32(0)`).
+        if (!routeRegistry.isRouteAllowed(
+                vault, address(this), address(usdc), destinationDomain, mintRecipient, bytes32(0)
+            )) {
             revert RouteNotAllowed(destinationDomain, mintRecipient);
         }
 

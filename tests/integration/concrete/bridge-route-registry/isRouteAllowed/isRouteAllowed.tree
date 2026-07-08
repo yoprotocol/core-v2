@@ -7,5 +7,7 @@ IsRouteAllowed_BridgeRouteRegistry_Integration_Concrete_Test
    │  └── it should return false
    ├── given a different destinationId
    │  └── it should return false
-   └── given a different recipient
+   ├── given a different recipient
+   │  └── it should return false
+   └── given a different outputToken
       └── it should return false

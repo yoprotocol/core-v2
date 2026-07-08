@@ -45,7 +45,9 @@ contract CcipNativeFeeViaManageTest is Fork_Test {
 
         recipient = bytes32(uint256(uint160(address(yoVault))));
         vm.prank(users.owner);
-        routeReg.setRoute(address(yoVault), address(adapter), address(token), DEST_SELECTOR, recipient, true);
+        routeReg.setRoute(
+            address(yoVault), address(adapter), address(token), DEST_SELECTOR, recipient, bytes32(0), true
+        );
 
         token.mint(address(yoVault), AMOUNT);
         _vaultApprove(IERC20(address(token)), address(adapter), type(uint256).max);

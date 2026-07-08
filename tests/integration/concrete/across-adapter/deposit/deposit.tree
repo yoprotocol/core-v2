@@ -4,11 +4,15 @@ Deposit_AcrossAdapter_Integration_Concrete_Test
 └── when inputAmount non zero
    ├── when route not allowed
    │  └── it should revert with RouteNotAllowed
-   └── when route allowed
+   ├── when message not empty
+   │  └── it should revert with MessageNotAllowed
+   ├── when outputAmount below floor
+   │  └── it should revert with SlippageTooLow
+   └── when valid
       ├── it should pull inputAmount from the vault
       ├── it should forward depositor as the vault
       ├── it should forward the params to the spokePool
+      ├── it should append the referral tag
       ├── it should reset spokePool allowance to zero
-      ├── it should leave zero inputToken in the adapter
       ├── it should emit AdapterAction
       └── it should return inputAmount

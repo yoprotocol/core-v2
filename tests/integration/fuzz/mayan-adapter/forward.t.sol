@@ -39,7 +39,15 @@ contract Forward_MayanAdapter_Integration_Fuzz_Test is Integration_Test {
 
     function testFuzz_ForwardERC20_ValidRoute(uint256 amountIn, bytes32 destAddr, uint16 destChainId) external {
         amountIn = bound(amountIn, 1, usdc.balanceOf(users.vault));
-        _allowRoute(users.vault, address(mayanAdapter), address(usdc), destChainId, destAddr);
+        // Route pins the order's tokenOut (usdt in `_order`).
+        _allowRoute(
+            users.vault,
+            address(mayanAdapter),
+            address(usdc),
+            destChainId,
+            destAddr,
+            bytes32(uint256(uint160(address(usdt))))
+        );
 
         bytes memory data = _order(address(usdc), amountIn, destAddr, destChainId);
         uint256 vaultBefore = usdc.balanceOf(users.vault);
@@ -173,8 +181,16 @@ contract Forward_MayanAdapter_Integration_Fuzz_Test is Integration_Test {
         );
         mayanAdapter.forwardERC20(wethBase, amountIn, payload);
 
-        // Allowlist the exact route → the real order passes every guard and is forwarded verbatim.
-        _allowRoute(trader, address(mayanAdapter), wethBase, destChainId, destAddr);
+        // Allowlist the exact route, pinning the order's real tokenOut (WETH mainnet, from the SDK
+        // payload) → the real order passes every guard and is forwarded verbatim.
+        _allowRoute(
+            trader,
+            address(mayanAdapter),
+            wethBase,
+            destChainId,
+            destAddr,
+            bytes32(uint256(uint160(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)))
+        );
         vm.prank(trader);
         uint256 forwarded = mayanAdapter.forwardERC20(wethBase, amountIn, payload);
 

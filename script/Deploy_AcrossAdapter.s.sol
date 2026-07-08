@@ -38,7 +38,9 @@ contract Deploy_AcrossAdapter is BaseScript {
             revert SpokePoolNotDeployed(chainId, spokePool);
         }
 
-        adapter = new YoAcrossAdapter{ salt: SALT }(IAcrossSpokePool(spokePool), routeRegistry, yoRegistry);
+        adapter = new YoAcrossAdapter{ salt: SALT }(
+            IAcrossSpokePool(spokePool), routeRegistry, getMaxSlippageBps(), yoRegistry
+        );
 
         console2.log("=== YO Across Adapter Deployed ===");
         console2.log("Chain ID:               ", chainId);

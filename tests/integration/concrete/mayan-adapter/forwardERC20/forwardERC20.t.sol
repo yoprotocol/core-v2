@@ -37,7 +37,7 @@ contract ForwardERC20_MayanAdapter_Integration_Concrete_Test is Integration_Test
             destAddr: destAddr,
             destChainId: destChainId,
             referrerAddr: bytes32(0),
-            tokenOut: bytes32(uint256(uint160(address(usdt)))),
+            tokenOut: bytes32(uint256(uint160(address(usdc)))),
             minAmountOut: 1,
             gasDrop: 0,
             cancelFee: 0,

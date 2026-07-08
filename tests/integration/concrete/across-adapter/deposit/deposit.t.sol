@@ -11,7 +11,7 @@ contract Deposit_AcrossAdapter_Integration_Concrete_Test is Integration_Test {
         p = IYoAcrossAdapter.DepositParams({
             recipient: defaults.BRIDGE_RECIPIENT(),
             inputToken: address(usdc),
-            outputToken: bytes32(uint256(uint160(address(usdc)))),
+            outputToken: bytes32(uint256(uint160(address(usdt)))),
             inputAmount: defaults.BRIDGE_AMOUNT(),
             outputAmount: defaults.BRIDGE_AMOUNT() - 1e6,
             destinationChainId: defaults.ACROSS_DEST_CHAIN_ID(),
@@ -49,11 +49,25 @@ contract Deposit_AcrossAdapter_Integration_Concrete_Test is Integration_Test {
         acrossAdapter.deposit(p);
     }
 
-    function test_WhenRouteAllowed() external whenInputAmountNonZero {
+    function test_WhenMessageNotEmpty() external whenInputAmountNonZero {
         IYoAcrossAdapter.DepositParams memory p = _params();
-        // Non-empty message + a non-canonical length (not a multiple of 32) to exercise the hand-built
-        // dynamic-tail encoding and its right-padding.
-        p.message = hex"deadbeefcafe";
+        p.message = hex"deadbeef";
+        vm.prank(users.vault);
+        vm.expectRevert(IYoAcrossAdapter.MessageNotAllowed.selector);
+        acrossAdapter.deposit(p);
+    }
+
+    function test_WhenOutputAmountBelowFloor() external whenInputAmountNonZero {
+        IYoAcrossAdapter.DepositParams memory p = _params();
+        uint256 floor = (p.inputAmount * (10_000 - defaults.MAX_SLIPPAGE_BPS())) / 10_000;
+        p.outputAmount = floor - 1;
+        vm.prank(users.vault);
+        vm.expectRevert(abi.encodeWithSelector(IYoAcrossAdapter.SlippageTooLow.selector, p.outputAmount, floor));
+        acrossAdapter.deposit(p);
+    }
+
+    function test_WhenValid() external whenInputAmountNonZero {
+        IYoAcrossAdapter.DepositParams memory p = _params();
         uint256 vaultBefore = usdc.balanceOf(users.vault);
 
         vm.expectEmit(true, true, true, true, address(acrossAdapter));

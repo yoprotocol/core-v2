@@ -44,7 +44,9 @@ contract CcipForkTest is Fork_Test {
         recipient = bytes32(uint256(uint160(address(yoVault))));
 
         vm.prank(users.owner);
-        routeRegistry.setRoute(address(yoVault), address(adapter), address(USDC), BASE_SELECTOR, recipient, true);
+        routeRegistry.setRoute(
+            address(yoVault), address(adapter), address(USDC), BASE_SELECTOR, recipient, bytes32(0), true
+        );
 
         deal(address(USDC), address(yoVault), BRIDGE_AMOUNT);
         deal(address(LINK), address(yoVault), 100e18);

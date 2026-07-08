@@ -15,7 +15,7 @@ contract Deposit_AcrossAdapter_Integration_Fuzz_Test is Integration_Test {
         IYoAcrossAdapter.DepositParams memory p = IYoAcrossAdapter.DepositParams({
             recipient: recipient,
             inputToken: address(usdc),
-            outputToken: bytes32(uint256(uint160(address(usdc)))),
+            outputToken: bytes32(0),
             inputAmount: inputAmount,
             outputAmount: inputAmount,
             destinationChainId: destinationId,

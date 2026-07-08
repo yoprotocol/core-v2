@@ -190,7 +190,10 @@ abstract contract Base_Test is Assertions, Modifiers {
             _yoRegistry: yoRegistry
         });
         acrossAdapter = new YoAcrossAdapter(
-            IAcrossSpokePool(address(mockSpokePool)), IYoBridgeRouteRegistry(address(routeRegistry)), yoRegistry
+            IAcrossSpokePool(address(mockSpokePool)),
+            IYoBridgeRouteRegistry(address(routeRegistry)),
+            defaults.MAX_SLIPPAGE_BPS(),
+            yoRegistry
         );
         cctpAdapter = new YoCctpAdapter(
             ITokenMessengerV2(address(mockTokenMessenger)),
@@ -202,10 +205,15 @@ abstract contract Base_Test is Assertions, Modifiers {
             ICcipRouterClient(address(mockCcipRouter)), IYoBridgeRouteRegistry(address(routeRegistry)), yoRegistry
         );
         mayanAdapter = new YoMayanAdapter(
-            IMayanForwarder(address(mockMayanForwarder)),
-            mayanSwift,
-            IYoBridgeRouteRegistry(address(routeRegistry)),
-            yoRegistry
+            YoMayanAdapter.InitParams({
+                forwarder: IMayanForwarder(address(mockMayanForwarder)),
+                swiftProtocol: mayanSwift,
+                routeRegistry: IYoBridgeRouteRegistry(address(routeRegistry)),
+                oracle: IYoSwapOracle(address(mockOracle)),
+                pairRegistry: IYoSwapPairRegistry(address(pairRegistry)),
+                maxSlippageBps: defaults.MAX_SLIPPAGE_BPS(),
+                yoRegistry: yoRegistry
+            })
         );
         vm.stopPrank();
         vm.label(address(approvalRegistry), "YoApprovalRegistry");
@@ -269,6 +277,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         yieldVaultRegistry.setAllowed(vault, address(yieldVault), true);
     }
 
+    /// @dev Allow a route with no pinned output token (`bytes32(0)`) — for CCIP/CCTP.
     function _allowRoute(
         address vault,
         address adapter,
@@ -278,7 +287,21 @@ abstract contract Base_Test is Assertions, Modifiers {
     )
         internal
     {
+        _allowRoute(vault, adapter, token, destinationId, recipient, bytes32(0));
+    }
+
+    /// @dev Allow a route pinning `outputToken` — for Across (`outputToken`) / Mayan (order `tokenOut`).
+    function _allowRoute(
+        address vault,
+        address adapter,
+        address token,
+        uint256 destinationId,
+        bytes32 recipient,
+        bytes32 outputToken
+    )
+        internal
+    {
         vm.prank(users.owner);
-        routeRegistry.setRoute(vault, adapter, token, destinationId, recipient, true);
+        routeRegistry.setRoute(vault, adapter, token, destinationId, recipient, outputToken, true);
     }
 }

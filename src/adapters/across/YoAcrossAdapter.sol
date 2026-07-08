@@ -17,7 +17,12 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 /// @dev    INVARIANTS:
 ///           - `msg.sender` is the vault when invoked via `YoVault.manage(...)`; the origin-chain
 ///             `depositor` is forced to the vault so refunds return to it.
-///           - Funds may only leave to a route allowlisted in `routeRegistry`.
+///           - Funds may only leave to a route allowlisted in `routeRegistry`, and the route key
+///             includes `outputToken` — so a relayer must deliver the exact destination token the
+///             multisig pinned (a worthless output token is simply not an allowlisted route).
+///             `message` is forced empty (no destination-side hook) and `outputAmount >= inputAmount *
+///             (1 - maxSlippageBps)` caps the relayer fee. An unfillable deposit refunds to the vault
+///             (`depositor`).
 ///           - Each call leaks zero new balance / zero allowance to the SpokePool; pre-existing dust
 ///             is recoverable by registered YO vaults via `rescue` / `rescueETH` (see {YoAdapterBase}).
 contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
@@ -36,15 +41,22 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
     /// @notice Allowlist of permitted `(vault, adapter, token, destinationChainId, recipient)` routes.
     IYoBridgeRouteRegistry public immutable routeRegistry;
 
+    /// @notice Max relayer fee tolerated, in bps of `inputAmount`. Floors `outputAmount`.
+    uint256 public immutable maxSlippageBps;
+
+    uint256 internal constant BPS_DENOMINATOR = 10_000;
+
     constructor(
         IAcrossSpokePool _spokePool,
         IYoBridgeRouteRegistry _routeRegistry,
+        uint256 _maxSlippageBps,
         IYoRegistry _yoRegistry
     )
         YoAdapterBase(_yoRegistry)
     {
         spokePool = _spokePool;
         routeRegistry = _routeRegistry;
+        maxSlippageBps = _maxSlippageBps;
     }
 
     /// @inheritdoc IYoAcrossAdapter
@@ -53,9 +65,27 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
             revert InvalidAmount();
         }
         if (!routeRegistry.isRouteAllowed(
-                msg.sender, address(this), params.inputToken, params.destinationChainId, params.recipient
+                msg.sender,
+                address(this),
+                params.inputToken,
+                params.destinationChainId,
+                params.recipient,
+                params.outputToken
             )) {
             revert RouteNotAllowed(params.inputToken, params.destinationChainId, params.recipient);
+        }
+        // No destination-side hook (parity with CCIP/Mayan).
+        if (params.message.length != 0) {
+            revert MessageNotAllowed();
+        }
+        // Floor the delivered amount, capping the relayer fee (`inputAmount - outputAmount`). Assumes
+        // `outputToken` is `inputToken`'s same-decimal canonical equivalent — an assertion the
+        // multisig makes when allowlisting the route. Pinning `outputToken`'s identity on-chain
+        // requires a per-route `expectedOutputToken` in the registry (follow-up); until then the token
+        // itself is operator/cosigner-trusted (`bytes32(0)` is NOT accepted by the SpokePool).
+        uint256 floor = (params.inputAmount * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
+        if (params.outputAmount < floor) {
+            revert SlippageTooLow(params.outputAmount, floor);
         }
 
         IERC20(params.inputToken).safeTransferFrom(msg.sender, address(this), params.inputAmount);

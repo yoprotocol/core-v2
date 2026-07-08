@@ -11,7 +11,6 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
     bytes32 private recipient;
     uint256 private amount;
     address private swapProtocol;
-    uint256 private constant MIN_MIDDLE = 1;
 
     function setUp() public override {
         Integration_Test.setUp();
@@ -21,7 +20,7 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
         swapProtocol = makeAddr("SwapProtocol");
     }
 
-    /// @dev Build a Swift order whose declared input token is `orderTokenIn` (the middle token).
+    /// @dev Swift order whose declared input token is `orderTokenIn` (must equal the middle token).
     function _order(address orderTokenIn, bytes32 trader, bytes32 destAddr) internal view returns (bytes memory) {
         IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
             payloadType: 1,
@@ -39,28 +38,43 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
             auctionMode: 2,
             random: bytes32(uint256(1))
         });
-        // The order amount is a placeholder; the Forwarder rewrites it with the swap output.
-        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, uint256(0), o, "");
+        // Order amount is a placeholder; the Forwarder rewrites it with the swap output.
+        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, uint256(0), o, bytes(""));
     }
 
     function _vaultTrader() internal view returns (bytes32) {
         return bytes32(uint256(uint160(address(users.vault))));
     }
 
-    function _params(bytes memory mayanData) internal view returns (IYoMayanAdapter.SwapForwardParams memory) {
+    function _params(
+        address middleToken,
+        uint256 minMiddleAmount,
+        bytes memory mayanData
+    )
+        internal
+        view
+        returns (IYoMayanAdapter.SwapForwardParams memory)
+    {
         return IYoMayanAdapter.SwapForwardParams({
             tokenIn: address(usdc),
             amountIn: amount,
             swapProtocol: swapProtocol,
             swapData: hex"",
-            middleToken: address(usdt),
-            minMiddleAmount: MIN_MIDDLE,
+            middleToken: middleToken,
+            minMiddleAmount: minMiddleAmount,
             mayanData: mayanData
         });
     }
 
+    /// @dev Oracle floor for `amount` of usdc→usdt at the configured max slippage (1:1 quote).
+    function _floor() internal view returns (uint256) {
+        return mockOracle.getQuote(address(usdc), address(usdt), amount)
+            * (defaults.BPS_DENOMINATOR() - defaults.MAX_SLIPPAGE_BPS()) / defaults.BPS_DENOMINATOR();
+    }
+
     function test_WhenAmountInZero() external {
-        IYoMayanAdapter.SwapForwardParams memory p = _params(_order(address(usdt), _vaultTrader(), recipient));
+        IYoMayanAdapter.SwapForwardParams memory p =
+            _params(address(usdt), 995e6, _order(address(usdt), _vaultTrader(), recipient));
         p.amountIn = 0;
         vm.prank(users.vault);
         vm.expectRevert(IYoMayanAdapter.InvalidAmount.selector);
@@ -73,7 +87,8 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
 
     function test_WhenOrderTokenNotMiddleToken() external whenAmountInNonZero {
         // Order declares usdc but middleToken is usdt.
-        IYoMayanAdapter.SwapForwardParams memory p = _params(_order(address(usdc), _vaultTrader(), recipient));
+        IYoMayanAdapter.SwapForwardParams memory p =
+            _params(address(usdt), 995e6, _order(address(usdc), _vaultTrader(), recipient));
         vm.prank(users.vault);
         vm.expectRevert(IYoMayanAdapter.ProtocolDataMismatch.selector);
         mayanAdapter.swapAndForwardERC20(p);
@@ -81,7 +96,8 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
 
     function test_WhenTraderNotVault() external whenAmountInNonZero {
         bytes32 badTrader = bytes32(uint256(uint160(address(users.eve))));
-        IYoMayanAdapter.SwapForwardParams memory p = _params(_order(address(usdt), badTrader, recipient));
+        IYoMayanAdapter.SwapForwardParams memory p =
+            _params(address(usdt), 995e6, _order(address(usdt), badTrader, recipient));
         vm.prank(users.vault);
         vm.expectRevert(abi.encodeWithSelector(IYoMayanAdapter.TraderNotVault.selector, badTrader));
         mayanAdapter.swapAndForwardERC20(p);
@@ -89,7 +105,8 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
 
     function test_WhenRouteNotAllowed() external whenAmountInNonZero {
         bytes32 badDest = bytes32(uint256(0xDEAD));
-        IYoMayanAdapter.SwapForwardParams memory p = _params(_order(address(usdt), _vaultTrader(), badDest));
+        IYoMayanAdapter.SwapForwardParams memory p =
+            _params(address(usdt), 995e6, _order(address(usdt), _vaultTrader(), badDest));
         vm.prank(users.vault);
         vm.expectRevert(
             abi.encodeWithSelector(IYoMayanAdapter.RouteNotAllowed.selector, address(usdc), destChain, badDest)
@@ -97,9 +114,28 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
         mayanAdapter.swapAndForwardERC20(p);
     }
 
-    function test_WhenOrderValidAndRouteAllowed() external whenAmountInNonZero {
+    function test_WhenSwapPairDisallowed() external whenAmountInNonZero {
+        // (usdc, weth) is not an allowlisted swap pair — a stand-in for an operator-chosen fake token.
+        IYoMayanAdapter.SwapForwardParams memory p =
+            _params(address(weth), 995e6, _order(address(weth), _vaultTrader(), recipient));
+        vm.prank(users.vault);
+        vm.expectRevert(abi.encodeWithSelector(IYoMayanAdapter.PairNotAllowed.selector, address(usdc), address(weth)));
+        mayanAdapter.swapAndForwardERC20(p);
+    }
+
+    function test_WhenMinMiddleAmountBelowOracleFloor() external whenAmountInNonZero {
+        uint256 floor = _floor();
+        IYoMayanAdapter.SwapForwardParams memory p =
+            _params(address(usdt), 1, _order(address(usdt), _vaultTrader(), recipient));
+        vm.prank(users.vault);
+        vm.expectRevert(abi.encodeWithSelector(IYoMayanAdapter.SlippageTooLow.selector, uint256(1), floor));
+        mayanAdapter.swapAndForwardERC20(p);
+    }
+
+    function test_WhenValidAndWithinSlippage() external whenAmountInNonZero {
+        uint256 minMiddle = _floor();
         bytes memory data = _order(address(usdt), _vaultTrader(), recipient);
-        IYoMayanAdapter.SwapForwardParams memory p = _params(data);
+        IYoMayanAdapter.SwapForwardParams memory p = _params(address(usdt), minMiddle, data);
         uint256 vaultBefore = usdc.balanceOf(users.vault);
 
         vm.prank(users.vault);
@@ -125,7 +161,7 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
         assertEq(amountIn, amount, "amountIn");
         assertEq(fSwapProtocol, swapProtocol, "swapProtocol");
         assertEq(middleToken, address(usdt), "middleToken");
-        assertEq(minMiddleAmount, MIN_MIDDLE, "minMiddleAmount");
+        assertEq(minMiddleAmount, minMiddle, "minMiddleAmount");
         assertEq(mayanProtocol, mayanSwift, "mayanProtocol not swift");
         assertEq(mayanData, data, "mayanData not forwarded verbatim");
         // it should reset forwarder allowance to zero

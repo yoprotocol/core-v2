@@ -34,7 +34,7 @@ contract AcrossForkTest is Fork_Test {
 
         vm.prank(users.owner);
         routeRegistry = new YoBridgeRouteRegistry(users.owner);
-        adapter = new YoAcrossAdapter(SPOKE_POOL, IYoBridgeRouteRegistry(address(routeRegistry)), yoRegistry);
+        adapter = new YoAcrossAdapter(SPOKE_POOL, IYoBridgeRouteRegistry(address(routeRegistry)), 50, yoRegistry);
 
         vm.label(address(adapter), "YoAcrossAdapter");
         vm.label(address(SPOKE_POOL), "AcrossSpokePool");
@@ -43,7 +43,15 @@ contract AcrossForkTest is Fork_Test {
         recipient = bytes32(uint256(uint160(address(yoVault))));
 
         vm.prank(users.owner);
-        routeRegistry.setRoute(address(yoVault), address(adapter), address(USDC), BASE_CHAIN_ID, recipient, true);
+        routeRegistry.setRoute(
+            address(yoVault),
+            address(adapter),
+            address(USDC),
+            BASE_CHAIN_ID,
+            recipient,
+            bytes32(uint256(uint160(USDC_BASE))),
+            true
+        );
 
         deal(address(USDC), address(yoVault), BRIDGE_AMOUNT);
         _vaultApprove(USDC, address(adapter), type(uint256).max);

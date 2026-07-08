@@ -7,6 +7,8 @@ import { YoMayanAdapter } from "../src/adapters/mayan/YoMayanAdapter.sol";
 import { IMayanForwarder } from "../src/interfaces/external/IMayanForwarder.sol";
 import { IYoBridgeRouteRegistry } from "../src/interfaces/IYoBridgeRouteRegistry.sol";
 import { IYoRegistry } from "../src/interfaces/IYoRegistry.sol";
+import { IYoSwapOracle } from "../src/interfaces/IYoSwapOracle.sol";
+import { IYoSwapPairRegistry } from "../src/interfaces/IYoSwapPairRegistry.sol";
 
 import { BaseScript } from "./Base.s.sol";
 
@@ -24,6 +26,8 @@ import { BaseScript } from "./Base.s.sol";
 ///         Required env vars:
 ///           - YO_REGISTRY:               live YoRegistry proxy (adapter `rescue` auth).
 ///           - YO_BRIDGE_ROUTE_REGISTRY:  deployed {YoBridgeRouteRegistry} on this chain.
+///           - YO_SWAP_ORACLE:            deployed YoChainlinkOracle (floors the swap leg).
+///           - YO_SWAP_PAIR_REGISTRY:     deployed YoSwapPairRegistry (gates the swap pair).
 ///         Optional env vars:
 ///           - MAYAN_FORWARDER, MAYAN_SWIFT: override the chain-pinned addresses.
 ///           - ETH_FROM, MNEMONIC:           broadcaster key (see {BaseScript}).
@@ -44,7 +48,17 @@ contract Deploy_MayanAdapter is BaseScript {
             revert SwiftNotDeployed(chainId, swift);
         }
 
-        adapter = new YoMayanAdapter{ salt: SALT }(IMayanForwarder(forwarder), swift, routeRegistry, yoRegistry);
+        adapter = new YoMayanAdapter{ salt: SALT }(
+            YoMayanAdapter.InitParams({
+                forwarder: IMayanForwarder(forwarder),
+                swiftProtocol: swift,
+                routeRegistry: routeRegistry,
+                oracle: IYoSwapOracle(vm.envAddress("YO_SWAP_ORACLE")),
+                pairRegistry: IYoSwapPairRegistry(vm.envAddress("YO_SWAP_PAIR_REGISTRY")),
+                maxSlippageBps: getMaxSlippageBps(),
+                yoRegistry: yoRegistry
+            })
+        );
 
         console2.log("=== YO Mayan Adapter Deployed ===");
         console2.log("Chain ID:               ", chainId);
