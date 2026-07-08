@@ -44,8 +44,6 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
     /// @notice Max relayer fee tolerated, in bps of `inputAmount`. Floors `outputAmount`.
     uint256 public immutable maxSlippageBps;
 
-    uint256 internal constant BPS_DENOMINATOR = 10_000;
-
     constructor(
         IAcrossSpokePool _spokePool,
         IYoBridgeRouteRegistry _routeRegistry,
@@ -78,12 +76,12 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
         if (params.message.length != 0) {
             revert MessageNotAllowed();
         }
-        // Floor the delivered amount, capping the relayer fee (`inputAmount - outputAmount`). Assumes
-        // `outputToken` is `inputToken`'s same-decimal canonical equivalent — an assertion the
-        // multisig makes when allowlisting the route. Pinning `outputToken`'s identity on-chain
-        // requires a per-route `expectedOutputToken` in the registry (follow-up); until then the token
-        // itself is operator/cosigner-trusted (`bytes32(0)` is NOT accepted by the SpokePool).
-        uint256 floor = (params.inputAmount * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
+        // Floor the delivered amount, capping the relayer fee (`inputAmount - outputAmount`). The
+        // `outputToken` identity is pinned by the route key checked above, so this floor only needs to
+        // bound the fee. Assumes `outputToken` is `inputToken`'s same-decimal canonical equivalent — an
+        // assertion the multisig makes when allowlisting the route. `bytes32(0)` is not a usable route
+        // output: the SpokePool reverts `InvalidOutputToken()` on it.
+        uint256 floor = _applyBps(params.inputAmount, BPS_DENOMINATOR - maxSlippageBps);
         if (params.outputAmount < floor) {
             revert SlippageTooLow(params.outputAmount, floor);
         }

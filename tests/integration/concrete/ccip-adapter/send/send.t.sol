@@ -22,7 +22,7 @@ contract Send_CcipAdapter_Integration_Concrete_Test is Integration_Test {
     function test_WhenAmountZero() external {
         vm.prank(users.vault);
         vm.expectRevert(IYoCcipAdapter.InvalidAmount.selector);
-        ccipAdapter.send(destSelector, recipient, address(usdc), 0, address(0), 0, "");
+        ccipAdapter.send(destSelector, recipient, address(usdc), 0, 0, "");
     }
 
     modifier whenAmountNonZero() {
@@ -35,7 +35,7 @@ contract Send_CcipAdapter_Integration_Concrete_Test is Integration_Test {
         vm.expectRevert(
             abi.encodeWithSelector(IYoCcipAdapter.RouteNotAllowed.selector, address(usdc), destSelector, badRecipient)
         );
-        ccipAdapter.send(destSelector, badRecipient, address(usdc), amount, address(0), 0, "");
+        ccipAdapter.send(destSelector, badRecipient, address(usdc), amount, 0, "");
     }
 
     modifier whenRouteAllowed() {
@@ -48,39 +48,23 @@ contract Send_CcipAdapter_Integration_Concrete_Test is Integration_Test {
 
         vm.prank(users.vault);
         vm.expectRevert(abi.encodeWithSelector(IYoCcipAdapter.FeeExceedsMax.selector, fee, 1));
-        ccipAdapter.send{ value: fee }(destSelector, recipient, address(usdc), amount, address(0), 1, "");
+        ccipAdapter.send{ value: fee }(destSelector, recipient, address(usdc), amount, 1, "");
     }
 
     modifier whenQuotedFeeWithinMaxFee() {
         _;
     }
 
-    modifier givenNativeFee() {
-        _;
-    }
-
-    function test_WhenMsgValueBelowFee()
-        external
-        whenAmountNonZero
-        whenRouteAllowed
-        whenQuotedFeeWithinMaxFee
-        givenNativeFee
-    {
+    function test_WhenMsgValueBelowFee() external whenAmountNonZero whenRouteAllowed whenQuotedFeeWithinMaxFee {
         uint256 fee = defaults.CCIP_FEE();
         mockCcipRouter.setFee(fee);
 
         vm.prank(users.vault);
         vm.expectRevert(abi.encodeWithSelector(IYoCcipAdapter.IncorrectNativeFee.selector, fee - 1, fee));
-        ccipAdapter.send{ value: fee - 1 }(destSelector, recipient, address(usdc), amount, address(0), fee, "");
+        ccipAdapter.send{ value: fee - 1 }(destSelector, recipient, address(usdc), amount, fee, "");
     }
 
-    function test_WhenMsgValueAtLeastFee()
-        external
-        whenAmountNonZero
-        whenRouteAllowed
-        whenQuotedFeeWithinMaxFee
-        givenNativeFee
-    {
+    function test_WhenMsgValueAtLeastFee() external whenAmountNonZero whenRouteAllowed whenQuotedFeeWithinMaxFee {
         uint256 fee = defaults.CCIP_FEE();
         mockCcipRouter.setFee(fee);
         uint256 vaultBefore = usdc.balanceOf(users.vault);
@@ -95,8 +79,7 @@ contract Send_CcipAdapter_Integration_Concrete_Test is Integration_Test {
         );
 
         vm.prank(users.vault);
-        bytes32 messageId =
-            ccipAdapter.send{ value: fee }(destSelector, recipient, address(usdc), amount, address(0), fee, "");
+        bytes32 messageId = ccipAdapter.send{ value: fee }(destSelector, recipient, address(usdc), amount, fee, "");
 
         // it should return the messageId
         assertEq(messageId, mockCcipRouter.nextMessageId(), "messageId");
@@ -107,25 +90,5 @@ contract Send_CcipAdapter_Integration_Concrete_Test is Integration_Test {
         // it should reset router allowance to zero
         assertZeroAllowance(address(usdc), address(ccipAdapter), address(mockCcipRouter));
         assertZeroBalance(address(usdc), address(ccipAdapter));
-    }
-
-    function test_GivenTokenFee() external whenAmountNonZero whenRouteAllowed whenQuotedFeeWithinMaxFee {
-        uint256 fee = 5e18;
-        mockCcipRouter.setFee(fee);
-        uint256 usdcBefore = usdc.balanceOf(users.vault);
-        uint256 linkBefore = link.balanceOf(users.vault);
-
-        vm.prank(users.vault);
-        bytes32 messageId = ccipAdapter.send(destSelector, recipient, address(usdc), amount, address(link), fee, "");
-
-        // it should return the messageId
-        assertEq(messageId, mockCcipRouter.nextMessageId(), "messageId");
-        // it should pull amount and fee from the vault
-        assertEq(usdc.balanceOf(users.vault), usdcBefore - amount, "usdc not debited");
-        assertEq(link.balanceOf(users.vault), linkBefore - fee, "link fee not debited");
-        assertEq(link.balanceOf(address(mockCcipRouter)), fee, "router link not credited");
-        // it should reset router allowance for token and feeToken to zero
-        assertZeroAllowance(address(usdc), address(ccipAdapter), address(mockCcipRouter));
-        assertZeroAllowance(address(link), address(ccipAdapter), address(mockCcipRouter));
     }
 }

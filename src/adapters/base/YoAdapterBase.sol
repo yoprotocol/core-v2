@@ -8,28 +8,24 @@ import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/Reentran
 import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
 
 /// @title  YoAdapterBase
-/// @notice Shared base for every YO adapter. Provides the `rescue` / `rescueETH` recovery surface
-///         and the canonical `nonReentrant` guard.
-///
-///         The rescue methods are callable only by a currently-registered YO vault (per
-///         `YoRegistry.isYoVault`) and always send recovered funds to `msg.sender` — there is no
-///         caller-controlled destination. Combined with the immutable `YoRegistry` reference, this
-///         means the only way to receive funds via rescue is to be allowlisted by the multisig
-///         that owns the registry.
-///
+/// @notice Shared base for every YO adapter: the `rescue` / `rescueETH` recovery surface and the
+///         canonical `nonReentrant` guard.
 /// @dev    INVARIANTS:
-///           - The adapter holds no admin keys and no upgrade path.
-///           - Rescue is permissioned by *current* registry membership; a removed vault loses
-///             rescue rights.
-///           - Funds always flow to `msg.sender`; the rescue path cannot be redirected.
-///           - Rescue shares the same reentrancy guard as the adapter's primary methods, so no
-///             cross-method reentry is possible.
+///           - No admin keys, no upgrade path.
+///           - `rescue` / `rescueETH` are callable only by a *currently*-registered YO vault (per the
+///             immutable `YoRegistry.isYoVault`) and always send to `msg.sender` — no caller-controlled
+///             destination, so a removed vault loses rescue rights and the path cannot be redirected.
+///           - Rescue shares the adapters' reentrancy guard, so no cross-method reentry is possible.
 abstract contract YoAdapterBase is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /// @notice Registry consulted to validate rescue callers. Immutable for the lifetime of the
     ///         adapter; if a new registry is ever needed, redeploy.
     IYoRegistry public immutable yoRegistry;
+
+    /// @notice Basis-points denominator (100% == 10_000). Shared by adapters that cap fees or floor
+    ///         slippage against a bps bound.
+    uint256 internal constant BPS_DENOMINATOR = 10_000;
 
     error CallerNotYoVault(address caller);
     error ZeroRegistry();
@@ -99,6 +95,12 @@ abstract contract YoAdapterBase is ReentrancyGuardTransient {
     ///      adapter at the point a deposit / withdraw / swap leg completes.
     function _emitAction(address target, address asset, AdapterDirection direction, uint256 amount) internal {
         emit AdapterAction(msg.sender, target, asset, direction, amount);
+    }
+
+    /// @dev `amount * bps / BPS_DENOMINATOR`. Shared by adapter fee caps and slippage floors (pass
+    ///      `BPS_DENOMINATOR - slippageBps` for a floor).
+    function _applyBps(uint256 amount, uint256 bps) internal pure returns (uint256) {
+        return (amount * bps) / BPS_DENOMINATOR;
     }
 
     /// @notice Sweep this adapter's full ETH balance to the calling vault. Callable only by a

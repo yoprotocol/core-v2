@@ -41,7 +41,9 @@ contract Deploy_CctpAdapter is BaseScript {
         }
         IERC20 usdc = IERC20(getUSDC());
 
-        adapter = new YoCctpAdapter{ salt: SALT }(ITokenMessengerV2(tokenMessenger), usdc, routeRegistry, yoRegistry);
+        adapter = new YoCctpAdapter{ salt: SALT }(
+            ITokenMessengerV2(tokenMessenger), usdc, routeRegistry, getMaxFeeBps(), yoRegistry
+        );
 
         console2.log("=== YO CCTP Adapter Deployed ===");
         console2.log("Chain ID:               ", chainId);

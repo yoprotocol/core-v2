@@ -59,9 +59,8 @@ contract CcipNativeFeeViaManageTest is Fork_Test {
     function test_Ccip_NativeFee_ViaManage() external {
         uint256 vaultEthBefore = address(yoVault).balance;
 
-        bytes memory call = abi.encodeCall(
-            YoCcipAdapter.send, (DEST_SELECTOR, recipient, address(token), AMOUNT, address(0), FEE, "")
-        );
+        bytes memory call =
+            abi.encodeCall(YoCcipAdapter.send, (DEST_SELECTOR, recipient, address(token), AMOUNT, FEE, ""));
 
         // Operator drives the vault to bridge, forwarding the fee as native `value` from the vault.
         authority.setAllowed(users.operator, address(adapter), YoCcipAdapter.send.selector, true);
@@ -84,7 +83,7 @@ contract CcipNativeFeeViaManageTest is Fork_Test {
         // quoted fee); the vault reclaims it via `rescueETH` since YO vaults are payable ({Compatible}).
         uint256 overpay = FEE + 0.01 ether;
         bytes memory call =
-            abi.encodeCall(YoCcipAdapter.send, (DEST_SELECTOR, recipient, address(token), AMOUNT, address(0), FEE, ""));
+            abi.encodeCall(YoCcipAdapter.send, (DEST_SELECTOR, recipient, address(token), AMOUNT, FEE, ""));
         authority.setAllowed(users.operator, address(adapter), YoCcipAdapter.send.selector, true);
         vm.prank(users.operator);
         yoVault.manage(address(adapter), call, overpay);

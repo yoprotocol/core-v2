@@ -32,8 +32,6 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    uint256 internal constant BPS_DENOMINATOR = 10_000;
-
     address public immutable aggregator;
     IYoSwapOracle public immutable oracle;
     IYoSwapPairRegistry public immutable registry;
@@ -86,7 +84,7 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         // multisig has explicitly opted into.
         if (mode == IYoSwapPairRegistry.PairMode.ORACLE_CHECKED) {
             uint256 oracleQuote = oracle.getQuote(tokenIn, tokenOut, amountIn);
-            uint256 floor = (oracleQuote * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
+            uint256 floor = _applyBps(oracleQuote, BPS_DENOMINATOR - maxSlippageBps);
             if (minOut < floor) {
                 revert SlippageTooLow(minOut, floor);
             }

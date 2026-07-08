@@ -8,15 +8,10 @@ Send_CcipAdapter_Integration_Concrete_Test
       ├── when quoted fee exceeds maxFee
       │  └── it should revert with FeeExceedsMax
       └── when quoted fee within maxFee
-         ├── given native fee
-         │  ├── when msg value below fee
-         │  │  └── it should revert with IncorrectNativeFee
-         │  └── when msg value at least fee
-         │     ├── it should pull amount from the vault
-         │     ├── it should reset router allowance to zero
-         │     ├── it should emit AdapterAction
-         │     └── it should return the messageId
-         └── given token fee
-            ├── it should pull amount and fee from the vault
-            ├── it should reset router allowance for token and feeToken to zero
+         ├── when msg value below fee
+         │  └── it should revert with IncorrectNativeFee
+         └── when msg value at least fee
+            ├── it should pull amount from the vault
+            ├── it should reset router allowance to zero
+            ├── it should emit AdapterAction
             └── it should return the messageId

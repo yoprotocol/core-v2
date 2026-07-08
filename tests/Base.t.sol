@@ -199,6 +199,7 @@ abstract contract Base_Test is Assertions, Modifiers {
             ITokenMessengerV2(address(mockTokenMessenger)),
             IERC20(address(usdc)),
             IYoBridgeRouteRegistry(address(routeRegistry)),
+            defaults.MAX_FEE_BPS(),
             yoRegistry
         );
         ccipAdapter = new YoCcipAdapter(
@@ -211,7 +212,9 @@ abstract contract Base_Test is Assertions, Modifiers {
                 routeRegistry: IYoBridgeRouteRegistry(address(routeRegistry)),
                 oracle: IYoSwapOracle(address(mockOracle)),
                 pairRegistry: IYoSwapPairRegistry(address(pairRegistry)),
-                maxSlippageBps: defaults.MAX_SLIPPAGE_BPS(),
+                maxSwapSlippageBps: defaults.MAX_SLIPPAGE_BPS(),
+                maxBridgeSlippageBps: defaults.MAX_BRIDGE_SLIPPAGE_BPS(),
+                maxOrderFeeBps: 300,
                 yoRegistry: yoRegistry
             })
         );

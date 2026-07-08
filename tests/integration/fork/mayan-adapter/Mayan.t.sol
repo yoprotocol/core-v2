@@ -13,6 +13,7 @@ import { YoBridgeRouteRegistry } from "src/registries/YoBridgeRouteRegistry.sol"
 
 import { MockSwapOracle } from "../../../mocks/MockSwapOracle.sol";
 import { Fork_Test } from "../Fork_Test.t.sol";
+import { MayanOrders } from "../../../utils/MayanOrders.sol";
 
 /// @notice End-to-end: real YoVault → YoMayanAdapter → real Mayan Forwarder + Swift on Ethereum
 ///         mainnet. Creates a real Swift order for USDC (Base destination) and asserts the funds left
@@ -22,7 +23,7 @@ contract MayanForkTest is Fork_Test {
     uint256 internal constant MAINNET_BLOCK = 0; // latest
 
     IMayanForwarder internal constant FORWARDER = IMayanForwarder(0x337685fdaB40D39bd02028545a4FfA7D287cC3E2);
-    address internal constant SWIFT = 0xC38e4e6A15593f908255214653d3D947CA1c2338;
+    address internal constant SWIFT = 0x40fFE85A28DC9993541449464d7529a922142960;
     IERC20 internal constant USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address internal constant USDC_BASE = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     uint16 internal constant BASE_WORMHOLE_CHAIN = 30;
@@ -48,7 +49,9 @@ contract MayanForkTest is Fork_Test {
                 routeRegistry: IYoBridgeRouteRegistry(address(routeRegistry)),
                 oracle: IYoSwapOracle(address(new MockSwapOracle())),
                 pairRegistry: IYoSwapPairRegistry(address(pairRegistry)),
-                maxSlippageBps: 50,
+                maxSwapSlippageBps: 50,
+                maxBridgeSlippageBps: 300,
+                maxOrderFeeBps: 300,
                 yoRegistry: yoRegistry
             })
         );
@@ -84,24 +87,14 @@ contract MayanForkTest is Fork_Test {
     // test covers the on-chain route guard against the real Forwarder/Swift deployment.
 
     function test_Fork_Mayan_RevertWhen_RouteNotAllowed() external {
-        IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
-            payloadType: 1,
-            trader: bytes32(uint256(uint160(address(yoVault)))),
-            destAddr: bytes32(uint256(0xDEAD)),
-            destChainId: BASE_WORMHOLE_CHAIN,
-            referrerAddr: bytes32(0),
-            tokenOut: bytes32(uint256(uint160(USDC_BASE))),
-            minAmountOut: uint64(BRIDGE_AMOUNT - 100e6),
-            gasDrop: 0,
-            cancelFee: 0,
-            refundFee: 0,
-            deadline: uint64(block.timestamp + 1 hours),
-            referrerBps: 0,
-            auctionMode: 2,
-            random: bytes32(uint256(1))
-        });
-        bytes memory data =
-            abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, address(USDC), BRIDGE_AMOUNT, o, "");
+        IMayanSwift.OrderParams memory o = MayanOrders.order(
+            bytes32(uint256(uint160(address(yoVault)))),
+            bytes32(uint256(0xDEAD)),
+            BASE_WORMHOLE_CHAIN,
+            USDC_BASE,
+            uint64(BRIDGE_AMOUNT - 100e6)
+        );
+        bytes memory data = MayanOrders.encode(address(USDC), BRIDGE_AMOUNT, o);
 
         bytes memory call = abi.encodeCall(YoMayanAdapter.forwardERC20, (address(USDC), BRIDGE_AMOUNT, data));
         authority.setAllowed(users.operator, address(adapter), YoMayanAdapter.forwardERC20.selector, true);

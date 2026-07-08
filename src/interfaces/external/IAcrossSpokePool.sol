@@ -13,8 +13,10 @@ interface IAcrossSpokePool {
     /// @param depositor            Origin-chain account credited on refund if the deposit expires.
     /// @param recipient            Destination-chain account that receives `outputToken`.
     /// @param inputToken           Token deposited on the origin chain.
-    /// @param outputToken          Token delivered on the destination chain (`bytes32(0)` lets the
-    ///                             relayer pick the canonical equivalent token).
+    /// @param outputToken          Token delivered on the destination chain. Must be an explicit token:
+    ///                             the deployed SpokePool reverts `InvalidOutputToken()` on `bytes32(0)`
+    ///                             (unlike the deprecated `depositV3`, which auto-resolved zero to the
+    ///                             canonical equivalent).
     /// @param inputAmount          Amount of `inputToken` deposited.
     /// @param outputAmount         Amount of `outputToken` delivered (input minus relayer fee).
     /// @param destinationChainId   EVM chain id of the destination chain.

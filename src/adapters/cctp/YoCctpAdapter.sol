@@ -32,10 +32,14 @@ contract YoCctpAdapter is YoAdapterBase, IYoCctpAdapter {
     /// @notice Allowlist of permitted `(vault, adapter, usdc, destinationDomain, mintRecipient)` routes.
     IYoBridgeRouteRegistry public immutable routeRegistry;
 
+    /// @notice Max fast-transfer fee tolerated, in bps of `amount`. Caps the operator's `maxFee`.
+    uint256 public immutable maxFeeBps;
+
     constructor(
         ITokenMessengerV2 _tokenMessenger,
         IERC20 _usdc,
         IYoBridgeRouteRegistry _routeRegistry,
+        uint256 _maxFeeBps,
         IYoRegistry _yoRegistry
     )
         YoAdapterBase(_yoRegistry)
@@ -43,6 +47,7 @@ contract YoCctpAdapter is YoAdapterBase, IYoCctpAdapter {
         tokenMessenger = _tokenMessenger;
         usdc = _usdc;
         routeRegistry = _routeRegistry;
+        maxFeeBps = _maxFeeBps;
     }
 
     /// @inheritdoc IYoCctpAdapter
@@ -50,7 +55,6 @@ contract YoCctpAdapter is YoAdapterBase, IYoCctpAdapter {
         uint256 amount,
         uint32 destinationDomain,
         bytes32 mintRecipient,
-        bytes32 destinationCaller,
         uint256 maxFee,
         uint32 minFinalityThreshold
     )
@@ -60,6 +64,14 @@ contract YoCctpAdapter is YoAdapterBase, IYoCctpAdapter {
     {
         if (amount == 0) {
             revert InvalidAmount();
+        }
+        // Cap the fast-transfer fee. Circle deducts up to `maxFee` from the minted amount, so a
+        // fat-fingered or malicious `maxFee` (up to `amount`) could burn most of the transfer as fees.
+        // Not an operator skim (the fee accrues to Circle), but bounded for parity with the other
+        // adapters' fee/slippage caps. `maxFee` is a ceiling; Circle charges the lower actual fee.
+        uint256 feeCap = _applyBps(amount, maxFeeBps);
+        if (maxFee > feeCap) {
+            revert FeeTooHigh(maxFee, feeCap);
         }
         address vault = msg.sender;
         // CCTP mints USDC on the destination, so no output token is pinned (`bytes32(0)`).
@@ -72,8 +84,11 @@ contract YoCctpAdapter is YoAdapterBase, IYoCctpAdapter {
         usdc.safeTransferFrom(vault, address(this), amount);
         usdc.forceApprove(address(tokenMessenger), amount);
 
+        // `destinationCaller` is forced to `bytes32(0)`: any address may complete the mint on the
+        // destination, so a malicious operator cannot strand the burned USDC behind a dead caller
+        // (CCTP has no expiry-refund). The recipient is already pinned by the route.
         tokenMessenger.depositForBurn(
-            amount, destinationDomain, mintRecipient, address(usdc), destinationCaller, maxFee, minFinalityThreshold
+            amount, destinationDomain, mintRecipient, address(usdc), bytes32(0), maxFee, minFinalityThreshold
         );
 
         usdc.forceApprove(address(tokenMessenger), 0);

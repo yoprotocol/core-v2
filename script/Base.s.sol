@@ -207,9 +207,32 @@ abstract contract BaseScript is Script {
         return 0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39;
     }
 
-    /// @notice Maximum slippage in basis points for the swap adapter's oracle-checked path.
+    /// @notice Maximum slippage in basis points for the swap adapter's oracle-checked path (and the
+    ///         Mayan source-swap leg floor).
     function getMaxSlippageBps() public pure returns (uint256) {
         return 25; // 0.25%
+    }
+
+    /// @notice Maximum slippage in basis points for the Mayan `minAmountOut` delivery floor (both
+    ///         paths) — sized for the swap-path source-swap + bridge round trip, so wider than
+    ///         {getMaxSlippageBps}.
+    function getMaxBridgeSlippageBps() public pure returns (uint256) {
+        return 200; // 2%
+    }
+
+    /// @notice Maximum combined Mayan `cancelFee + refundFee` in basis points of the bridged amount.
+    /// @dev    Generous vs real gas-compensation fees (a few bps on treasury-size bridges) but far
+    ///         below a refund-skim (~100%). Small transfers where fixed gas comp exceeds this bound
+    ///         are not the vault's use case.
+    function getMaxOrderFeeBps() public pure returns (uint256) {
+        return 300; // 3%
+    }
+
+    /// @notice Maximum CCTP fast-transfer fee in basis points of the burn amount.
+    /// @dev    Circle's fast-transfer fee is a few bps; this bounds a fat-fingered/malicious `maxFee`
+    ///         well below the amount while leaving ample headroom over the real fee schedule.
+    function getMaxFeeBps() public pure returns (uint256) {
+        return 50; // 0.5%
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -282,15 +305,17 @@ abstract contract BaseScript is Script {
         return 0x337685fdaB40D39bd02028545a4FfA7D287cC3E2;
     }
 
-    /// @notice Mayan Swift settlement contract. Same address on every supported EVM chain.
-    /// @dev    Source: https://docs.mayan.finance/architecture/swift. Overridable via the
-    ///         `MAYAN_SWIFT` env var.
+    /// @notice Mayan Swift V2 settlement contract. Same address on every supported EVM chain.
+    /// @dev    Source: https://docs.mayan.finance/architecture/swift-v2. This is the V2 entrypoint
+    ///         (`createOrderWithToken` selector `0xa3a30834`, 14-field `OrderParams` with `payloadType`
+    ///         + trailing `customPayload`) that {YoMayanAdapter} decodes — NOT the deprecated V1
+    ///         `0xC38e4e6A…` (selector `0x8e8d142b`, 13-field). Overridable via the `MAYAN_SWIFT` env var.
     function getMayanSwift() public view returns (address) {
         address envOverride = vm.envOr({ name: "MAYAN_SWIFT", defaultValue: address(0) });
         if (envOverride != address(0)) {
             return envOverride;
         }
-        return 0xC38e4e6A15593f908255214653d3D947CA1c2338;
+        return 0x40fFE85A28DC9993541449464d7529a922142960;
     }
 
     /// @notice Native (Circle-issued) USDC per chain. Overridable via the `USDC` env var.

@@ -24,6 +24,8 @@ contract MockMayanForwarder is IMayanForwarder {
     }
 
     LastCall public last;
+    /// @dev Recorded separately so `last()` keeps a stable tuple shape for existing tests.
+    bytes public lastSwapData;
     uint256 public callCount;
 
     /// @inheritdoc IMayanForwarder
@@ -55,7 +57,7 @@ contract MockMayanForwarder is IMayanForwarder {
         uint256 amountIn,
         PermitParams calldata,
         address swapProtocol,
-        bytes calldata,
+        bytes calldata swapData,
         address middleToken,
         uint256 minMiddleAmount,
         address mayanProtocol,
@@ -65,6 +67,7 @@ contract MockMayanForwarder is IMayanForwarder {
         payable
     {
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+        lastSwapData = swapData;
         last.swap = true;
         last.tokenIn = tokenIn;
         last.amountIn = amountIn;

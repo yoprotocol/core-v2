@@ -21,6 +21,7 @@ contract CctpForkTest is Fork_Test {
     uint32 internal constant BASE_DOMAIN = 6;
     uint32 internal constant STANDARD_FINALITY = 2000;
     uint256 internal constant BRIDGE_AMOUNT = 10_000e6;
+    uint256 internal constant MAX_FEE_BPS = 50;
 
     YoBridgeRouteRegistry internal routeRegistry;
     YoCctpAdapter internal adapter;
@@ -33,7 +34,9 @@ contract CctpForkTest is Fork_Test {
 
         vm.prank(users.owner);
         routeRegistry = new YoBridgeRouteRegistry(users.owner);
-        adapter = new YoCctpAdapter(TOKEN_MESSENGER, USDC, IYoBridgeRouteRegistry(address(routeRegistry)), yoRegistry);
+        adapter = new YoCctpAdapter(
+            TOKEN_MESSENGER, USDC, IYoBridgeRouteRegistry(address(routeRegistry)), MAX_FEE_BPS, yoRegistry
+        );
 
         vm.label(address(adapter), "YoCctpAdapter");
         vm.label(address(TOKEN_MESSENGER), "TokenMessengerV2");
@@ -55,7 +58,7 @@ contract CctpForkTest is Fork_Test {
         uint256 supplyBefore = USDC.totalSupply();
 
         bytes memory call = abi.encodeCall(
-            YoCctpAdapter.depositForBurn, (BRIDGE_AMOUNT, BASE_DOMAIN, recipient, bytes32(0), 0, STANDARD_FINALITY)
+            YoCctpAdapter.depositForBurn, (BRIDGE_AMOUNT, BASE_DOMAIN, recipient, 0, STANDARD_FINALITY)
         );
         uint256 burned = abi.decode(_opManage(address(adapter), call), (uint256));
 
@@ -71,7 +74,7 @@ contract CctpForkTest is Fork_Test {
     function test_Fork_Cctp_RevertWhen_RouteNotAllowed() external {
         bytes32 badRecipient = bytes32(uint256(0xDEAD));
         bytes memory call = abi.encodeCall(
-            YoCctpAdapter.depositForBurn, (BRIDGE_AMOUNT, BASE_DOMAIN, badRecipient, bytes32(0), 0, STANDARD_FINALITY)
+            YoCctpAdapter.depositForBurn, (BRIDGE_AMOUNT, BASE_DOMAIN, badRecipient, 0, STANDARD_FINALITY)
         );
         authority.setAllowed(users.operator, address(adapter), YoCctpAdapter.depositForBurn.selector, true);
         vm.prank(users.operator);

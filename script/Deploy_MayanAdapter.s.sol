@@ -55,7 +55,9 @@ contract Deploy_MayanAdapter is BaseScript {
                 routeRegistry: routeRegistry,
                 oracle: IYoSwapOracle(vm.envAddress("YO_SWAP_ORACLE")),
                 pairRegistry: IYoSwapPairRegistry(vm.envAddress("YO_SWAP_PAIR_REGISTRY")),
-                maxSlippageBps: getMaxSlippageBps(),
+                maxSwapSlippageBps: getMaxSlippageBps(),
+                maxBridgeSlippageBps: getMaxBridgeSlippageBps(),
+                maxOrderFeeBps: getMaxOrderFeeBps(),
                 yoRegistry: yoRegistry
             })
         );

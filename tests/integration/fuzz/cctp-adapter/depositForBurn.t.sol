@@ -14,15 +14,16 @@ contract DepositForBurn_CctpAdapter_Integration_Fuzz_Test is Integration_Test {
         external
     {
         amount = bound(amount, 1, usdc.balanceOf(users.vault));
+        // `maxFee` is capped at `MAX_FEE_BPS` of the amount; fuzz within the allowed band.
+        maxFee = bound(maxFee, 0, (amount * defaults.MAX_FEE_BPS()) / defaults.BPS_DENOMINATOR());
 
         _allowRoute(users.vault, address(cctpAdapter), address(usdc), destinationDomain, mintRecipient);
 
         uint256 vaultBefore = usdc.balanceOf(users.vault);
 
         vm.prank(users.vault);
-        uint256 burned = cctpAdapter.depositForBurn(
-            amount, destinationDomain, mintRecipient, bytes32(0), maxFee, minFinalityThreshold
-        );
+        uint256 burned =
+            cctpAdapter.depositForBurn(amount, destinationDomain, mintRecipient, maxFee, minFinalityThreshold);
 
         assertEq(burned, amount, "return");
         assertEq(usdc.balanceOf(users.vault), vaultBefore - amount, "vault debit");

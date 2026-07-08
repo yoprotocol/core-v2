@@ -5,6 +5,7 @@ import { IMayanSwift } from "src/interfaces/external/IMayanSwift.sol";
 import { IYoMayanAdapter } from "src/interfaces/IYoMayanAdapter.sol";
 
 import { Integration_Test } from "../../../Integration.t.sol";
+import { MayanOrders } from "../../../../utils/MayanOrders.sol";
 
 contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integration_Test {
     uint16 private destChain;
@@ -21,25 +22,13 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
     }
 
     /// @dev Swift order whose declared input token is `orderTokenIn` (must equal the middle token).
+    ///      `tokenOut` is usdc — a same-asset bridge (tokenIn usdc == tokenOut usdc) — and
+    ///      `minAmountOut` is the full input, clearing the swap-path delivery floor. The order amount
+    ///      is a placeholder; the Forwarder rewrites it with the swap output.
     function _order(address orderTokenIn, bytes32 trader, bytes32 destAddr) internal view returns (bytes memory) {
-        IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
-            payloadType: 1,
-            trader: trader,
-            destAddr: destAddr,
-            destChainId: destChain,
-            referrerAddr: bytes32(0),
-            tokenOut: bytes32(uint256(uint160(address(usdc)))),
-            minAmountOut: 1,
-            gasDrop: 0,
-            cancelFee: 0,
-            refundFee: 0,
-            deadline: uint64(block.timestamp + 1 hours),
-            referrerBps: 0,
-            auctionMode: 2,
-            random: bytes32(uint256(1))
-        });
-        // Order amount is a placeholder; the Forwarder rewrites it with the swap output.
-        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, uint256(0), o, bytes(""));
+        return MayanOrders.encode(
+            orderTokenIn, uint256(0), MayanOrders.order(trader, destAddr, destChain, address(usdc), uint64(amount))
+        );
     }
 
     function _vaultTrader() internal view returns (bytes32) {
@@ -129,6 +118,23 @@ contract SwapAndForwardERC20_MayanAdapter_Integration_Concrete_Test is Integrati
             _params(address(usdt), 1, _order(address(usdt), _vaultTrader(), recipient));
         vm.prank(users.vault);
         vm.expectRevert(abi.encodeWithSelector(IYoMayanAdapter.SlippageTooLow.selector, uint256(1), floor));
+        mayanAdapter.swapAndForwardERC20(p);
+    }
+
+    function test_WhenMinAmountOutBelowBridgeFloor() external whenAmountInNonZero {
+        // Delivery floor is keyed on the vault's input (usdc, 6-dp) at the wider bridge slippage.
+        uint256 deliveryFloor =
+            (amount * (defaults.BPS_DENOMINATOR() - defaults.MAX_BRIDGE_SLIPPAGE_BPS())) / defaults.BPS_DENOMINATOR();
+
+        IMayanSwift.OrderParams memory o =
+            MayanOrders.order(_vaultTrader(), recipient, destChain, address(usdc), uint64(deliveryFloor - 1));
+        bytes memory data = MayanOrders.encode(address(usdt), uint256(0), o);
+        IYoMayanAdapter.SwapForwardParams memory p = _params(address(usdt), _floor(), data);
+
+        vm.prank(users.vault);
+        vm.expectRevert(
+            abi.encodeWithSelector(IYoMayanAdapter.MinAmountOutTooLow.selector, deliveryFloor - 1, deliveryFloor)
+        );
         mayanAdapter.swapAndForwardERC20(p);
     }
 

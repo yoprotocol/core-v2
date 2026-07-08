@@ -4,44 +4,11 @@ pragma solidity 0.8.34;
 /// @notice Immutable adapter that brokers Mayan Swift cross-chain orders on behalf of a vault, via
 ///         the Mayan Forwarder's `forwardERC20` (bridge directly) and `swapAndForwardERC20` (swap the
 ///         vault's token to a middle token, then bridge).
-/// @dev    Functions are intended to be invoked exclusively via `YoVault.manage(...)` so that
-///         `msg.sender == vault` inside the adapter.
-///
-///         Unlike Across/CCIP/CCTP, Mayan's Forwarder hides the destination inside opaque Mayan data.
-///         The adapter therefore DECODES that data as a Swift `createOrderWithToken` order and
-///         enforces, on-chain and fail-closed:
-///           - the order selector is exactly Swift `createOrderWithToken` (else revert);
-///           - the order's input token matches what is actually bridged (`tokenIn` for the direct
-///             path, `middleToken` for the swap path);
-///           - the order's refund owner (`trader`) is the calling vault, so source-chain refunds
-///             return to the vault;
-///           - the order pays NO referrer (`referrerAddr == 0` and `referrerBps == 0`), closing the
-///             only fill-time channel that could pay value to an operator-chosen address;
-///           - the order carries NO `customPayload` (it must be empty) — only plain transfers are
-///             permitted, never a destination-side payload/hook;
-///           - the order's `(destChainId, destAddr)` is an allowlisted route in
-///             `YoBridgeRouteRegistry`, keyed on the vault's outgoing `tokenIn` (`destChainId` is a
-///             Wormhole chain id);
-///           - for `swapAndForwardERC20`, the source swap leg is oracle-floored: `(tokenIn,
-///             middleToken)` must be an allowlisted pair in `YoSwapPairRegistry` and, when
-///             `ORACLE_CHECKED`, `minMiddleAmount` must clear `YoSwapOracle`'s quote less
-///             `maxSlippageBps` — exactly the guarantee `YoSwapAdapter` gives operator-supplied swaps.
-///             This is what prevents an operator from draining the vault via a fake/underpriced
-///             middle token; the Forwarder itself only counts the (operator-named) middle token, so
-///             the token identity and its fair value must both be pinned here.
-///         The cross-chain `minAmountOut` delivered on the destination stays operator-supplied
-///         (cosigner-gated), as with the swap adapter's `minOut` and Across's `outputAmount` — it
-///         cannot be floored on the source chain.
-///
-///         ROUTE GRANULARITY: the route is always keyed on the vault's OUTGOING `tokenIn` — for the
-///         swap path this is the source token, not the transient `middleToken` that is bridged
-///         (`middleToken` is only constrained to equal the order's input token, and bounded by
-///         `minMiddleAmount` + the Forwarder's swap-protocol whitelist). Destination and refund owner
-///         are enforced regardless, so funds still land at the allowlisted recipient as the vault.
-///
-///         Scope: `mayanProtocol` is pinned to Swift and only `createOrderWithToken` is accepted;
-///         other Mayan protocols / order functions and native-input paths are rejected by the
-///         selector guard.
+/// @dev    Invoked exclusively via `YoVault.manage(...)` (`msg.sender == vault`). Unlike
+///         Across/CCIP/CCTP, Mayan's Forwarder hides the destination inside opaque Mayan data, so the
+///         adapter decodes it as a Swift `createOrderWithToken` order and enforces the destination,
+///         refund-owner, and economic guards on-chain — see {YoMayanAdapter} for the full invariant
+///         list. Only same-asset bridges (cbBTC→cbBTC, WETH→WETH, USDC→USDC, ...) are supported.
 ///
 ///         APPROVAL FLOW: the vault approves the adapter on `tokenIn`
 ///         (`vault.approveToken(tokenIn, adapter, cap)`); the adapter pulls via `transferFrom` and
@@ -53,9 +20,13 @@ interface IYoMayanAdapter {
     error TraderNotVault(bytes32 trader);
     error ReferrerNotAllowed(bytes32 referrerAddr, uint8 referrerBps);
     error CustomPayloadNotAllowed(uint256 length);
+    error InvalidPayloadType(uint8 payloadType);
+    error InvalidAuctionMode(uint8 auctionMode);
     error RouteNotAllowed(address tokenIn, uint16 destChainId, bytes32 destAddr);
     error PairNotAllowed(address tokenIn, address middleToken);
     error SlippageTooLow(uint256 minMiddleAmount, uint256 floor);
+    error OrderFeeTooHigh(uint256 fees, uint256 cap);
+    error MinAmountOutTooLow(uint256 minAmountOut, uint256 floor);
 
     /// @notice Parameters for a swap-then-bridge via `swapAndForwardERC20`.
     /// @param tokenIn         Token pulled from the vault and swapped.

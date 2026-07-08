@@ -25,11 +25,18 @@ contract DepositForBurn_CctpAdapter_Integration_Concrete_Test is Integration_Tes
     function test_WhenAmountZero() external {
         vm.prank(users.vault);
         vm.expectRevert(IYoCctpAdapter.InvalidAmount.selector);
-        cctpAdapter.depositForBurn(0, domain, recipient, bytes32(0), maxFee, threshold);
+        cctpAdapter.depositForBurn(0, domain, recipient, maxFee, threshold);
     }
 
     modifier whenAmountNonZero() {
         _;
+    }
+
+    function test_WhenFeeTooHigh() external whenAmountNonZero {
+        uint256 cap = (amount * defaults.MAX_FEE_BPS()) / defaults.BPS_DENOMINATOR();
+        vm.prank(users.vault);
+        vm.expectRevert(abi.encodeWithSelector(IYoCctpAdapter.FeeTooHigh.selector, cap + 1, cap));
+        cctpAdapter.depositForBurn(amount, domain, recipient, cap + 1, threshold);
     }
 
     function test_WhenRouteNotAllowed() external whenAmountNonZero {
@@ -37,11 +44,10 @@ contract DepositForBurn_CctpAdapter_Integration_Concrete_Test is Integration_Tes
 
         vm.prank(users.vault);
         vm.expectRevert(abi.encodeWithSelector(IYoCctpAdapter.RouteNotAllowed.selector, domain, badRecipient));
-        cctpAdapter.depositForBurn(amount, domain, badRecipient, bytes32(0), maxFee, threshold);
+        cctpAdapter.depositForBurn(amount, domain, badRecipient, maxFee, threshold);
     }
 
     function test_WhenRouteAllowed() external whenAmountNonZero {
-        bytes32 caller = bytes32(uint256(0xCA11));
         uint256 vaultBefore = usdc.balanceOf(users.vault);
 
         vm.expectEmit(true, true, true, true, address(cctpAdapter));
@@ -54,7 +60,7 @@ contract DepositForBurn_CctpAdapter_Integration_Concrete_Test is Integration_Tes
         );
 
         vm.prank(users.vault);
-        uint256 burned = cctpAdapter.depositForBurn(amount, domain, recipient, caller, maxFee, threshold);
+        uint256 burned = cctpAdapter.depositForBurn(amount, domain, recipient, maxFee, threshold);
 
         // it should return amount
         assertEq(burned, amount, "return value");
@@ -76,7 +82,8 @@ contract DepositForBurn_CctpAdapter_Integration_Concrete_Test is Integration_Tes
         assertEq(fRecipient, recipient, "recipient");
         // it should forward burnToken as usdc
         assertEq(fBurnToken, address(usdc), "burnToken not usdc");
-        assertEq(fCaller, caller, "caller");
+        // destinationCaller is forced to bytes32(0) by the adapter (permissionless mint).
+        assertEq(fCaller, bytes32(0), "caller not forced to zero");
         assertEq(fMaxFee, maxFee, "maxFee");
         assertEq(fThreshold, threshold, "threshold");
         // it should reset tokenMessenger allowance to zero / leave zero usdc in the adapter

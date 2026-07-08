@@ -19,12 +19,12 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///           - The CCIP message payload (`data`) is always empty — token transfers only, never an
 ///             arbitrary cross-chain call.
 ///           - Funds may only leave to a route allowlisted in `routeRegistry`.
+///           - The CCIP fee is paid ONLY in the native gas asset, from `msg.value`; an ERC-20/LINK
+///             fee is not supported, so the fee never touches the bridged token's allowance.
 ///           - Each call leaks zero new balance / zero allowance to the router; the adapter forwards
 ///             exactly the quoted `fee`, and any native overpayment is recoverable by registered YO
 ///             vaults (which are payable via {Compatible}) through `rescue` / `rescueETH` (see
 ///             {YoAdapterBase}).
-///           - `feeToken` may equal the bridged `token`; that case is funded with a single
-///             `amount + fee` allowance so the two router pulls do not collide.
 contract YoCcipAdapter is YoAdapterBase, IYoCcipAdapter {
     using SafeERC20 for IERC20;
 
@@ -51,7 +51,6 @@ contract YoCcipAdapter is YoAdapterBase, IYoCcipAdapter {
         bytes32 recipient,
         address token,
         uint256 amount,
-        address feeToken,
         uint256 maxFee,
         bytes calldata extraArgs
     )
@@ -74,38 +73,34 @@ contract YoCcipAdapter is YoAdapterBase, IYoCcipAdapter {
         if (uint256(recipient) >> 160 != 0) {
             revert RecipientNotEvmAddress(recipient);
         }
-        // An ERC-20 fee is pulled from the vault; any native sent here would strand in the adapter.
-        if (feeToken != address(0) && msg.value != 0) {
-            revert UnexpectedNativeValue(msg.value);
-        }
 
-        CcipClient.EVM2AnyMessage memory message = _buildMessage(recipient, token, amount, feeToken, extraArgs);
+        CcipClient.EVM2AnyMessage memory message = _buildMessage(recipient, token, amount, extraArgs);
 
         uint256 fee = router.getFee(destinationChainSelector, message);
         if (fee > maxFee) {
             revert FeeExceedsMax(fee, maxFee);
         }
+        // Native-only fee, forwarded from `msg.value`; overpayment stays recoverable via `rescueETH`.
+        if (msg.value < fee) {
+            revert IncorrectNativeFee(msg.value, fee);
+        }
 
         IERC20(token).safeTransferFrom(vault, address(this), amount);
+        IERC20(token).forceApprove(address(router), amount);
 
-        uint256 nativeFee = _settleFeeAndApprove(vault, token, amount, feeToken, fee);
-
-        messageId = router.ccipSend{ value: nativeFee }(destinationChainSelector, message);
+        messageId = router.ccipSend{ value: fee }(destinationChainSelector, message);
 
         IERC20(token).forceApprove(address(router), 0);
-        if (feeToken != address(0) && feeToken != token) {
-            IERC20(feeToken).forceApprove(address(router), 0);
-        }
 
         _emitAction(address(router), token, AdapterDirection.Bridge, amount);
     }
 
-    /// @dev Assemble the token-only CCIP message: empty payload, single token leg, EVM recipient.
+    /// @dev Assemble the token-only CCIP message: empty payload, single token leg, EVM recipient,
+    ///      native fee (`feeToken == address(0)`).
     function _buildMessage(
         bytes32 recipient,
         address token,
         uint256 amount,
-        address feeToken,
         bytes calldata extraArgs
     )
         private
@@ -119,49 +114,8 @@ contract YoCcipAdapter is YoAdapterBase, IYoCcipAdapter {
             receiver: abi.encode(address(uint160(uint256(recipient)))),
             data: "",
             tokenAmounts: tokenAmounts,
-            feeToken: feeToken,
+            feeToken: address(0),
             extraArgs: extraArgs
         });
-    }
-
-    /// @dev Source the CCIP fee and approve the router for both the token leg and the fee. Three
-    ///      cases:
-    ///        - Native fee (`feeToken == 0`): require `msg.value >= fee`, approve `amount` for the
-    ///          token leg, and forward `fee` as call value; any overpayment stays recoverable via
-    ///          `rescueETH`.
-    ///        - Fee in the bridged token (`feeToken == token`): pull `fee` and approve `amount + fee`
-    ///          with a single allowance, since the router pulls both from the same token.
-    ///        - Fee in a separate ERC-20: pull `fee`, approve `amount` for the token leg and `fee`
-    ///          for the fee token independently.
-    /// @return nativeFee The native value to forward with `ccipSend` (`fee` or `0`).
-    function _settleFeeAndApprove(
-        address vault,
-        address token,
-        uint256 amount,
-        address feeToken,
-        uint256 fee
-    )
-        private
-        returns (uint256 nativeFee)
-    {
-        if (feeToken == address(0)) {
-            if (msg.value < fee) {
-                revert IncorrectNativeFee(msg.value, fee);
-            }
-            IERC20(token).forceApprove(address(router), amount);
-            return fee;
-        }
-
-        if (feeToken == token) {
-            IERC20(token).safeTransferFrom(vault, address(this), fee);
-            IERC20(token).forceApprove(address(router), amount + fee);
-            return 0;
-        }
-
-        IERC20(feeToken).safeTransferFrom(vault, address(this), fee);
-        IERC20(token).forceApprove(address(router), amount);
-        IERC20(feeToken).forceApprove(address(router), fee);
-
-        return 0;
     }
 }

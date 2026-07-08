@@ -18,10 +18,14 @@ contract Defaults {
     uint256 public constant SWAP_EXPECTED_OUT = 1000e6;
     uint256 public constant ORACLE_QUOTE_1_TO_1 = 1e18;
     uint256 public constant MAX_SLIPPAGE_BPS = 50;
+    /// @dev Mayan swap-path `minAmountOut` floor: source-swap + bridge round trip, wider than a single leg.
+    uint256 public constant MAX_BRIDGE_SLIPPAGE_BPS = 300;
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
     // ---------------------- BRIDGE ----------------------
     uint256 public constant BRIDGE_AMOUNT = 1000e6;
+    /// @dev CCTP fast-transfer `maxFee` cap, in bps of the burn amount.
+    uint256 public constant MAX_FEE_BPS = 50;
     /// @dev Across uses the EVM chain id (Base).
     uint256 public constant ACROSS_DEST_CHAIN_ID = 8453;
     /// @dev CCIP uses its own chain selector (Base mainnet).

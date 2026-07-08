@@ -2,10 +2,10 @@
 pragma solidity 0.8.34;
 
 import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
-import { IMayanSwift } from "src/interfaces/external/IMayanSwift.sol";
 import { IYoMayanAdapter } from "src/interfaces/IYoMayanAdapter.sol";
 
 import { Integration_Test } from "../../../Integration.t.sol";
+import { MayanOrders } from "../../../../utils/MayanOrders.sol";
 
 contract ForwardERC20_MayanAdapter_Integration_Concrete_Test is Integration_Test {
     uint16 private destChain;
@@ -19,7 +19,9 @@ contract ForwardERC20_MayanAdapter_Integration_Concrete_Test is Integration_Test
         amount = defaults.BRIDGE_AMOUNT();
     }
 
-    /// @dev Build a Swift `createOrderWithToken` order for `(orderTokenIn, orderAmountIn)`.
+    /// @dev Build a Swift order for `(orderTokenIn, orderAmountIn)`. `tokenOut` is usdc (same-asset
+    ///      bridge) and `minAmountOut` is the full input (usdc is 6-dp so normalized == native),
+    ///      clearing the direct-path delivery floor.
     function _order(
         address orderTokenIn,
         uint256 orderAmountIn,
@@ -31,23 +33,11 @@ contract ForwardERC20_MayanAdapter_Integration_Concrete_Test is Integration_Test
         view
         returns (bytes memory)
     {
-        IMayanSwift.OrderParams memory o = IMayanSwift.OrderParams({
-            payloadType: 1,
-            trader: trader,
-            destAddr: destAddr,
-            destChainId: destChainId,
-            referrerAddr: bytes32(0),
-            tokenOut: bytes32(uint256(uint160(address(usdc)))),
-            minAmountOut: 1,
-            gasDrop: 0,
-            cancelFee: 0,
-            refundFee: 0,
-            deadline: uint64(block.timestamp + 1 hours),
-            referrerBps: 0,
-            auctionMode: 2,
-            random: bytes32(uint256(1))
-        });
-        return abi.encodeWithSelector(IMayanSwift.createOrderWithToken.selector, orderTokenIn, orderAmountIn, o, "");
+        return MayanOrders.encode(
+            orderTokenIn,
+            orderAmountIn,
+            MayanOrders.order(trader, destAddr, destChainId, address(usdc), uint64(orderAmountIn))
+        );
     }
 
     function _vaultTrader() internal view returns (bytes32) {

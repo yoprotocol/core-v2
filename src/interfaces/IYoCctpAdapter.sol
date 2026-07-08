@@ -10,8 +10,11 @@ pragma solidity 0.8.34;
 ///         SAFETY: a burn moves funds off-chain, so the mint destination is constrained by
 ///         `YoBridgeRouteRegistry` — `(vault, adapter, usdc, destinationDomain, mintRecipient)` must
 ///         be allowlisted by the multisig. `destinationDomain` is a Circle domain id, NOT an EVM
-///         chain id. Operator-supplied fields that cannot redirect funds (`destinationCaller`,
-///         `maxFee`, `minFinalityThreshold`) are not floored on-chain.
+///         chain id. `destinationCaller` is forced to `bytes32(0)` by the adapter so the mint is
+///         permissionlessly completable (no strand vector); `maxFee` is capped at `maxFeeBps` of the
+///         burn amount so a bad `maxFee` cannot convert the transfer into fees. `minFinalityThreshold`
+///         is operator/cosigner-trusted (it selects the fast vs. standard transfer path, not a fund
+///         destination).
 ///
 ///         APPROVAL FLOW: the vault approves the adapter on USDC
 ///         (`vault.approveToken(usdc, adapter, cap)`); the adapter pulls via `transferFrom` and
@@ -19,16 +22,16 @@ pragma solidity 0.8.34;
 interface IYoCctpAdapter {
     error InvalidAmount();
     error RouteNotAllowed(uint32 destinationDomain, bytes32 mintRecipient);
+    error FeeTooHigh(uint256 maxFee, uint256 cap);
 
     /// @notice Burn `amount` USDC for minting to `mintRecipient` on `destinationDomain`.
     /// @dev    Reverts unless the `(usdc, destinationDomain, mintRecipient)` route is allowlisted for
-    ///         the calling vault.
+    ///         the calling vault, and unless `maxFee <= amount * maxFeeBps / 10_000`.
     /// @return The amount of USDC burned (`amount`).
     function depositForBurn(
         uint256 amount,
         uint32 destinationDomain,
         bytes32 mintRecipient,
-        bytes32 destinationCaller,
         uint256 maxFee,
         uint32 minFinalityThreshold
     )
