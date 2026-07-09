@@ -36,9 +36,11 @@ fail_on_revert = true
 runs = 20
 show_metrics = false
 
-# Speed up compilation and tests during development
+# Speed up tests during development (fewer fuzz runs). The optimizer stays on: the legacy
+# (non-IR) pipeline needs it to compile deep-stack call sites such as the 12-argument Across
+# SpokePool `deposit` without hitting "stack too deep".
 [profile.lite]
-optimizer = false
+optimizer = true
 
 [profile.lite.fuzz]
 runs = 10

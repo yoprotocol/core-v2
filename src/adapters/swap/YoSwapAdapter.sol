@@ -14,9 +14,11 @@ import { YoAdapterBase } from "./../base/YoAdapterBase.sol";
 /// @notice Generic immutable swap adapter for **synchronous, approve-based aggregators**: 1inch v5/v6,
 ///         Odos, Paraswap, KyberSwap, OpenOcean, and any other aggregator that consumes `tokenIn` via
 ///         `transferFrom` after being approved, and emits `tokenOut` synchronously in the same tx.
-/// @dev    Output is verified by measuring the vault's `tokenOut` balance delta against `minOut`,
-///         which is itself constrained by an oracle floor. Routing inside `aggregatorCalldata` is
-///         operator-supplied; correctness is enforced by post-conditions, not by decoding.
+/// @dev    Output is verified by measuring the adapter's own `tokenOut` balance delta across the
+///         aggregator call against `minOut`, which is itself constrained by an oracle floor. Only
+///         that delta is forwarded to the vault, so the check cannot be inflated by unrelated
+///         inflows to the vault (e.g. a reentrant `deposit`). Routing inside `aggregatorCalldata`
+///         is operator-supplied; correctness is enforced by post-conditions, not by decoding.
 ///
 ///         NOT suitable for:
 ///           - Permit2-based flows (UniswapX, some 0x paths) — they do not pull via `transferFrom`.
@@ -29,8 +31,6 @@ import { YoAdapterBase } from "./../base/YoAdapterBase.sol";
 contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
     using SafeERC20 for IERC20;
     using Address for address;
-
-    uint256 internal constant BPS_DENOMINATOR = 10_000;
 
     address public immutable aggregator;
     IYoSwapOracle public immutable oracle;
@@ -84,34 +84,28 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         // multisig has explicitly opted into.
         if (mode == IYoSwapPairRegistry.PairMode.ORACLE_CHECKED) {
             uint256 oracleQuote = oracle.getQuote(tokenIn, tokenOut, amountIn);
-            uint256 floor = (oracleQuote * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
+            uint256 floor = _applyBps(oracleQuote, BPS_DENOMINATOR - maxSlippageBps);
             if (minOut < floor) {
                 revert SlippageTooLow(minOut, floor);
             }
         }
 
         IERC20 inToken = IERC20(tokenIn);
-        {
-            IERC20 outToken = IERC20(tokenOut);
-            uint256 vaultOutBefore = outToken.balanceOf(vault);
+        IERC20 outToken = IERC20(tokenOut);
+        uint256 adapterOutBefore = outToken.balanceOf(address(this));
 
-            inToken.safeTransferFrom(vault, address(this), amountIn);
-            inToken.forceApprove(aggregator, amountIn);
+        inToken.safeTransferFrom(vault, address(this), amountIn);
+        inToken.forceApprove(aggregator, amountIn);
 
-            aggregator.functionCall(aggregatorCalldata);
+        aggregator.functionCall(aggregatorCalldata);
 
-            uint256 adapterOut = outToken.balanceOf(address(this));
-            if (adapterOut > 0) {
-                outToken.safeTransfer(vault, adapterOut);
-            }
-
-            amountOut = outToken.balanceOf(vault) - vaultOutBefore;
-        }
+        amountOut = outToken.balanceOf(address(this)) - adapterOutBefore;
         if (amountOut < minOut) {
             revert InsufficientOutput(amountOut, minOut);
         }
 
         inToken.forceApprove(aggregator, 0);
+        outToken.safeTransfer(vault, amountOut);
 
         emit SwapAction(vault, aggregator, tokenIn, tokenOut, amountIn, amountOut);
     }

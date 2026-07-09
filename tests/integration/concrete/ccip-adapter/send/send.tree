@@ -1,0 +1,17 @@
+Send_CcipAdapter_Integration_Concrete_Test
+├── when amount zero
+│  └── it should revert with InvalidAmount
+└── when amount non zero
+   ├── when route not allowed
+   │  └── it should revert with RouteNotAllowed
+   └── when route allowed
+      ├── when quoted fee exceeds maxFee
+      │  └── it should revert with FeeExceedsMax
+      └── when quoted fee within maxFee
+         ├── when msg value below fee
+         │  └── it should revert with IncorrectNativeFee
+         └── when msg value at least fee
+            ├── it should pull amount from the vault
+            ├── it should reset router allowance to zero
+            ├── it should emit AdapterAction
+            └── it should return the messageId
