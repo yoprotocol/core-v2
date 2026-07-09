@@ -62,13 +62,14 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
         if (params.inputAmount == 0) {
             revert InvalidAmount();
         }
+        // The shared route registry keys accounts/tokens as `bytes32`; left-pad the EVM addresses.
         if (!routeRegistry.isRouteAllowed(
                 msg.sender,
                 address(this),
                 params.inputToken,
                 params.destinationChainId,
-                params.recipient,
-                params.outputToken
+                bytes32(uint256(uint160(params.recipient))),
+                bytes32(uint256(uint160(params.outputToken)))
             )) {
             revert RouteNotAllowed(params.inputToken, params.destinationChainId, params.recipient);
         }
@@ -79,7 +80,7 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
         // Floor the delivered amount, capping the relayer fee (`inputAmount - outputAmount`). The
         // `outputToken` identity is pinned by the route key checked above, so this floor only needs to
         // bound the fee. Assumes `outputToken` is `inputToken`'s same-decimal canonical equivalent — an
-        // assertion the multisig makes when allowlisting the route. `bytes32(0)` is not a usable route
+        // assertion the multisig makes when allowlisting the route. `address(0)` is not a usable route
         // output: the SpokePool reverts `InvalidOutputToken()` on it.
         uint256 floor = _applyBps(params.inputAmount, BPS_DENOMINATOR - maxSlippageBps);
         if (params.outputAmount < floor) {
@@ -103,11 +104,11 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
     ///      dispatched with a low-level call so the referral tag can trail the encoded arguments.
     function _forwardDeposit(DepositParams calldata params) private {
         bytes memory data = abi.encodeCall(
-            IAcrossSpokePool.deposit,
+            IAcrossSpokePool.depositV3,
             (
-                bytes32(uint256(uint160(msg.sender))),
+                msg.sender,
                 params.recipient,
-                bytes32(uint256(uint160(params.inputToken))),
+                params.inputToken,
                 params.outputToken,
                 params.inputAmount,
                 params.outputAmount,
@@ -115,7 +116,7 @@ contract YoAcrossAdapter is YoAdapterBase, IYoAcrossAdapter {
                 params.exclusiveRelayer,
                 params.quoteTimestamp,
                 params.fillDeadline,
-                params.exclusivityDeadline,
+                params.exclusivityParameter,
                 params.message
             )
         );

@@ -4,7 +4,7 @@ pragma solidity 0.8.34;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-/// @notice Minimal Across `SpokePool` stand-in. The adapter dispatches `deposit` via a low-level
+/// @notice Minimal Across `SpokePool` stand-in. The adapter dispatches `depositV3` via a low-level
 ///         call, so the mock captures it in `fallback` and reads the (fixed-offset, static) argument
 ///         words directly from calldata. This sidesteps the 12-argument ABI decoder, which cannot be
 ///         generated under the optimizer-off `lite` profile (stack too deep). It also pulls
@@ -13,23 +13,23 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 contract MockAcrossSpokePool {
     using SafeERC20 for IERC20;
 
-    bytes32 public depositor;
-    bytes32 public recipient;
-    bytes32 public inputToken;
-    bytes32 public outputToken;
+    address public depositor;
+    address public recipient;
+    address public inputToken;
+    address public outputToken;
     uint256 public inputAmount;
     uint256 public outputAmount;
     uint256 public destinationChainId;
-    bytes32 public exclusiveRelayer;
+    address public exclusiveRelayer;
     uint32 public quoteTimestamp;
     uint32 public fillDeadline;
-    uint32 public exclusivityDeadline;
+    uint32 public exclusivityParameter;
     bytes public message;
     bytes public lastCalldata;
     uint256 public callCount;
 
-    /// @dev `deposit(bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,bytes32,uint32,uint32,uint32,bytes)`.
-    bytes4 internal constant DEPOSIT_SELECTOR = 0xad5425c6;
+    /// @dev `depositV3(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes)`.
+    bytes4 internal constant DEPOSIT_SELECTOR = 0x7b939232;
 
     error UnexpectedSelector(bytes4 selector);
 
@@ -43,12 +43,12 @@ contract MockAcrossSpokePool {
         _recordMessage();
         lastCalldata = msg.data;
 
-        IERC20(address(uint160(uint256(inputToken)))).safeTransferFrom(msg.sender, address(this), inputAmount);
+        IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
         ++callCount;
     }
 
-    /// @dev Record the 11 static argument words from their fixed calldata offsets (`4 + i*32`).
-    ///      Read into locals, then assigned through Solidity so packed `uint32` slots stay correct.
+    /// @dev Record the 11 static argument words from their fixed calldata offsets (`4 + i*32`). Read
+    ///      into locals, then assigned through Solidity so packed `uint32` slots stay correct.
     function _recordStatics() private {
         bytes32 dep;
         bytes32 rec;
@@ -60,7 +60,7 @@ contract MockAcrossSpokePool {
         bytes32 relayer;
         uint32 quoteTs;
         uint32 fillDl;
-        uint32 exclDl;
+        uint32 exclParam;
         // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             dep := calldataload(4)
@@ -73,19 +73,19 @@ contract MockAcrossSpokePool {
             relayer := calldataload(228)
             quoteTs := calldataload(260)
             fillDl := calldataload(292)
-            exclDl := calldataload(324)
+            exclParam := calldataload(324)
         }
-        depositor = dep;
-        recipient = rec;
-        inputToken = inTok;
-        outputToken = outTok;
+        depositor = address(uint160(uint256(dep)));
+        recipient = address(uint160(uint256(rec)));
+        inputToken = address(uint160(uint256(inTok)));
+        outputToken = address(uint160(uint256(outTok)));
         inputAmount = inAmt;
         outputAmount = outAmt;
         destinationChainId = destId;
-        exclusiveRelayer = relayer;
+        exclusiveRelayer = address(uint160(uint256(relayer)));
         quoteTimestamp = quoteTs;
         fillDeadline = fillDl;
-        exclusivityDeadline = exclDl;
+        exclusivityParameter = exclParam;
     }
 
     /// @dev Decode the dynamic `message` from its ABI offset word (word 11, byte 356) so a malformed

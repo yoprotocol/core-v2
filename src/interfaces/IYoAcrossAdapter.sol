@@ -18,7 +18,7 @@ pragma solidity 0.8.34;
 ///         and forwards to the SpokePool. ERC-20 input only — native bridging is out of scope.
 interface IYoAcrossAdapter {
     error InvalidAmount();
-    error RouteNotAllowed(address inputToken, uint256 destinationChainId, bytes32 recipient);
+    error RouteNotAllowed(address inputToken, uint256 destinationChainId, address recipient);
     error MessageNotAllowed();
     error SlippageTooLow(uint256 outputAmount, uint256 floor);
 
@@ -30,22 +30,22 @@ interface IYoAcrossAdapter {
     /// @param inputAmount         Amount of `inputToken` to bridge.
     /// @param outputAmount        Amount delivered to `recipient` (input minus relayer fee).
     /// @param destinationChainId  EVM chain id of the destination chain.
-    /// @param exclusiveRelayer    Relayer with exclusive fill rights (`bytes32(0)` for none).
+    /// @param exclusiveRelayer    Relayer with exclusive fill rights (`address(0)` for none).
     /// @param quoteTimestamp      Timestamp of the fee quote.
     /// @param fillDeadline        Latest fill timestamp before refund.
-    /// @param exclusivityDeadline Timestamp until which only `exclusiveRelayer` may fill.
+    /// @param exclusivityParameter Timestamp/offset until which only `exclusiveRelayer` may fill.
     /// @param message             Calldata forwarded to a contract recipient.
     struct DepositParams {
-        bytes32 recipient;
+        address recipient;
         address inputToken;
-        bytes32 outputToken;
+        address outputToken;
         uint256 inputAmount;
         uint256 outputAmount;
         uint256 destinationChainId;
-        bytes32 exclusiveRelayer;
+        address exclusiveRelayer;
         uint32 quoteTimestamp;
         uint32 fillDeadline;
-        uint32 exclusivityDeadline;
+        uint32 exclusivityParameter;
         bytes message;
     }
 

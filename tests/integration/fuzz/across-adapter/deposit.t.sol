@@ -6,23 +6,25 @@ import { IYoAcrossAdapter } from "src/interfaces/IYoAcrossAdapter.sol";
 import { Integration_Test } from "../../Integration.t.sol";
 
 contract Deposit_AcrossAdapter_Integration_Fuzz_Test is Integration_Test {
-    function testFuzz_Deposit_PullsAndForwards(uint256 inputAmount, bytes32 recipient, uint256 destinationId) external {
+    function testFuzz_Deposit_PullsAndForwards(uint256 inputAmount, address recipient, uint256 destinationId) external {
         inputAmount = bound(inputAmount, 1, usdc.balanceOf(users.vault));
 
-        // Allowlist the fuzzed route so the deposit is permitted.
-        _allowRoute(users.vault, address(acrossAdapter), address(usdc), destinationId, recipient);
+        // Allowlist the fuzzed route so the deposit is permitted (registry keys the recipient as bytes32).
+        _allowRoute(
+            users.vault, address(acrossAdapter), address(usdc), destinationId, bytes32(uint256(uint160(recipient)))
+        );
 
         IYoAcrossAdapter.DepositParams memory p = IYoAcrossAdapter.DepositParams({
             recipient: recipient,
             inputToken: address(usdc),
-            outputToken: bytes32(0),
+            outputToken: address(0),
             inputAmount: inputAmount,
             outputAmount: inputAmount,
             destinationChainId: destinationId,
-            exclusiveRelayer: bytes32(0),
+            exclusiveRelayer: address(0),
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 1 hours),
-            exclusivityDeadline: 0,
+            exclusivityParameter: 0,
             message: ""
         });
 
@@ -35,26 +37,26 @@ contract Deposit_AcrossAdapter_Integration_Fuzz_Test is Integration_Test {
         assertEq(usdc.balanceOf(users.vault), vaultBefore - inputAmount, "vault debit");
         assertEq(mockSpokePool.recipient(), recipient, "recipient forwarded");
         assertEq(mockSpokePool.destinationChainId(), destinationId, "destinationId forwarded");
-        assertEq(mockSpokePool.depositor(), bytes32(uint256(uint160(address(users.vault)))), "depositor");
+        assertEq(mockSpokePool.depositor(), address(users.vault), "depositor");
         // Custody invariants.
         assertZeroBalance(address(usdc), address(acrossAdapter));
         assertZeroAllowance(address(usdc), address(acrossAdapter), address(mockSpokePool));
     }
 
-    function testFuzz_Deposit_RevertWhen_RouteNotAllowed(bytes32 recipient) external {
-        vm.assume(recipient != defaults.BRIDGE_RECIPIENT());
+    function testFuzz_Deposit_RevertWhen_RouteNotAllowed(address recipient) external {
+        vm.assume(recipient != defaults.BRIDGE_RECIPIENT_ADDR());
 
         IYoAcrossAdapter.DepositParams memory p = IYoAcrossAdapter.DepositParams({
             recipient: recipient,
             inputToken: address(usdc),
-            outputToken: bytes32(uint256(uint160(address(usdc)))),
+            outputToken: address(usdc),
             inputAmount: defaults.BRIDGE_AMOUNT(),
             outputAmount: defaults.BRIDGE_AMOUNT(),
             destinationChainId: defaults.ACROSS_DEST_CHAIN_ID(),
-            exclusiveRelayer: bytes32(0),
+            exclusiveRelayer: address(0),
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 1 hours),
-            exclusivityDeadline: 0,
+            exclusivityParameter: 0,
             message: ""
         });
 

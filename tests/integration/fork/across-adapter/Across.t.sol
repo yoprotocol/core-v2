@@ -25,7 +25,7 @@ contract AcrossForkTest is Fork_Test {
 
     YoBridgeRouteRegistry internal routeRegistry;
     YoAcrossAdapter internal adapter;
-    bytes32 internal recipient;
+    address internal recipient;
 
     function setUp() public {
         _maybeSkip(_forkIfAvailable("MAINNET_RPC_URL", MAINNET_BLOCK), "MAINNET_RPC_URL");
@@ -40,7 +40,7 @@ contract AcrossForkTest is Fork_Test {
         vm.label(address(SPOKE_POOL), "AcrossSpokePool");
         vm.label(address(USDC), "USDC");
 
-        recipient = bytes32(uint256(uint160(address(yoVault))));
+        recipient = address(yoVault);
 
         vm.prank(users.owner);
         routeRegistry.setRoute(
@@ -48,7 +48,7 @@ contract AcrossForkTest is Fork_Test {
             address(adapter),
             address(USDC),
             BASE_CHAIN_ID,
-            recipient,
+            bytes32(uint256(uint160(recipient))),
             bytes32(uint256(uint160(USDC_BASE))),
             true
         );
@@ -63,14 +63,14 @@ contract AcrossForkTest is Fork_Test {
         IYoAcrossAdapter.DepositParams memory p = IYoAcrossAdapter.DepositParams({
             recipient: recipient,
             inputToken: address(USDC),
-            outputToken: bytes32(uint256(uint160(USDC_BASE))),
+            outputToken: USDC_BASE,
             inputAmount: BRIDGE_AMOUNT,
             outputAmount: BRIDGE_AMOUNT - 10e6,
             destinationChainId: BASE_CHAIN_ID,
-            exclusiveRelayer: bytes32(0),
+            exclusiveRelayer: address(0),
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours),
-            exclusivityDeadline: 0,
+            exclusivityParameter: 0,
             message: ""
         });
 
@@ -86,16 +86,16 @@ contract AcrossForkTest is Fork_Test {
 
     function test_Fork_Across_RevertWhen_RouteNotAllowed() external {
         IYoAcrossAdapter.DepositParams memory p = IYoAcrossAdapter.DepositParams({
-            recipient: bytes32(uint256(0xDEAD)),
+            recipient: address(0xDEAD),
             inputToken: address(USDC),
-            outputToken: bytes32(uint256(uint160(USDC_BASE))),
+            outputToken: USDC_BASE,
             inputAmount: BRIDGE_AMOUNT,
             outputAmount: BRIDGE_AMOUNT - 10e6,
             destinationChainId: BASE_CHAIN_ID,
-            exclusiveRelayer: bytes32(0),
+            exclusiveRelayer: address(0),
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours),
-            exclusivityDeadline: 0,
+            exclusivityParameter: 0,
             message: ""
         });
 
