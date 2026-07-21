@@ -20,9 +20,13 @@ contract DustDoSSwapAdapterIntegrationFuzzTest is Integration_Test {
         usdt.mint(address(mockAggregator), amountIn);
         mockAggregator.setSwap(address(usdc), address(usdt), amountIn, address(swapAdapter));
 
+        uint256 vaultUsdcBefore = usdc.balanceOf(users.vault);
+
         vm.prank(users.vault);
         swapAdapter.swap(address(usdc), address(usdt), amountIn, amountIn, type(uint256).max, _execCalldata(amountIn));
 
-        assertEq(usdc.balanceOf(address(swapAdapter)), dust, "dust untouched");
+        // Leftover `tokenIn` (including pre-existing dust) is swept to the vault post-swap.
+        assertEq(usdc.balanceOf(address(swapAdapter)), 0, "adapter drained");
+        assertEq(usdc.balanceOf(users.vault), vaultUsdcBefore - amountIn + dust, "dust swept to vault");
     }
 }
