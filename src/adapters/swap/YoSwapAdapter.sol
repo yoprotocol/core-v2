@@ -107,9 +107,11 @@ contract YoSwapAdapter is YoAdapterBase, IYoSwapAdapter {
         inToken.forceApprove(aggregator, 0);
         outToken.safeTransfer(vault, amountOut);
 
-        uint256 adapterInAfter = inToken.balanceOf(address(this));
-        if (adapterInAfter > 0) {
-            inToken.safeTransfer(vault, adapterInAfter);
+        {
+            uint256 adapterInAfter = inToken.balanceOf(address(this));
+            if (adapterInAfter > 0) {
+                inToken.safeTransfer(vault, adapterInAfter);
+            }
         }
 
         emit SwapAction(vault, aggregator, tokenIn, tokenOut, amountIn, amountOut);
