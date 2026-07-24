@@ -50,9 +50,18 @@ contract Upgrade_YoVault_V3 is BaseScript {
         address proxy = vm.envAddress("YO_VAULT_PROXY");
         address approvalRegistry = vm.envAddress("YO_APPROVAL_REGISTRY");
 
-        vm.startBroadcast(broadcaster);
-        newImpl = new YoVault{ salt: SALT }();
-        vm.stopBroadcast();
+        // The V3 YoVault implementation takes no constructor args, so its CREATE2 address is fixed by
+        // (salt, bytecode) alone — the same on every chain and every run. Reuse it when already
+        // deployed instead of re-broadcasting into a `CreateCollision`, keeping the script idempotent.
+        address predicted = vm.computeCreate2Address(SALT, keccak256(type(YoVault).creationCode));
+        if (predicted.code.length == 0) {
+            vm.startBroadcast(broadcaster);
+            newImpl = new YoVault{ salt: SALT }();
+            vm.stopBroadcast();
+        } else {
+            newImpl = YoVault(payable(predicted));
+            console2.log("YoVault V3 implementation already deployed; reusing:", predicted);
+        }
 
         VaultUpgradePlan memory plan = VaultUpgradePlan({
             proxy: proxy,

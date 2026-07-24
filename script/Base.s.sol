@@ -131,6 +131,10 @@ abstract contract BaseScript is Script {
             return 0xD5D960E8C380B724a48AC59E2DfF1b2CB4a1eAee;
         }
 
+        if (chainId == ChainId.ARBITRUM) {
+            return 0x6c247b1F6182318877311737BaC0844bAa518F5e;
+        }
+
         revert ChainNotSupported("Morpho Blue", chainId);
     }
 
@@ -243,6 +247,16 @@ abstract contract BaseScript is Script {
     /// @dev    Source: https://docs.across.to/reference/contract-addresses. Overridable via the
     ///         `ACROSS_SPOKE_POOL` env var; chains not pinned here require the override.
     function getAcrossSpokePool() public view returns (address) {
+        address spokePool = getAcrossSpokePoolOrZero();
+        if (spokePool == address(0)) {
+            revert ChainNotSupported("Across SpokePool", chainId);
+        }
+        return spokePool;
+    }
+
+    /// @notice Like {getAcrossSpokePool} but returns `address(0)` on unsupported chains instead of
+    ///         reverting. For orchestration scripts that skip bridges unavailable on the target chain.
+    function getAcrossSpokePoolOrZero() public view returns (address) {
         address envOverride = vm.envOr({ name: "ACROSS_SPOKE_POOL", defaultValue: address(0) });
         if (envOverride != address(0)) {
             return envOverride;
@@ -256,13 +270,30 @@ abstract contract BaseScript is Script {
         if (chainId == ChainId.OPTIMISM) {
             return 0x6f26Bf09B1C792e3228e5467807a900A503c0281;
         }
-        revert ChainNotSupported("Across SpokePool", chainId);
+        if (chainId == ChainId.ARBITRUM) {
+            return 0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A;
+        }
+        if (chainId == ChainId.HYPEREVM) {
+            // Across `Universal_SpokePool` (Hyperliquid has no native canonical bridge).
+            return 0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04;
+        }
+        return address(0);
     }
 
     /// @notice Chainlink CCIP `Router` per chain. Distinct address per chain.
     /// @dev    Source: https://docs.chain.link/ccip/directory/mainnet. Overridable via the
     ///         `CCIP_ROUTER` env var.
     function getCcipRouter() public view returns (address) {
+        address router = getCcipRouterOrZero();
+        if (router == address(0)) {
+            revert ChainNotSupported("CCIP Router", chainId);
+        }
+        return router;
+    }
+
+    /// @notice Like {getCcipRouter} but returns `address(0)` on unsupported chains instead of
+    ///         reverting. For orchestration scripts that skip bridges unavailable on the target chain.
+    function getCcipRouterOrZero() public view returns (address) {
         address envOverride = vm.envOr({ name: "CCIP_ROUTER", defaultValue: address(0) });
         if (envOverride != address(0)) {
             return envOverride;
@@ -279,7 +310,10 @@ abstract contract BaseScript is Script {
         if (chainId == ChainId.OPTIMISM) {
             return 0x3206695CaE29952f4b0c22a169725a865bc8Ce0f;
         }
-        revert ChainNotSupported("CCIP Router", chainId);
+        if (chainId == ChainId.HYPEREVM) {
+            return 0x13b3332b66389B1467CA6eBd6fa79775CCeF65ec;
+        }
+        return address(0);
     }
 
     /// @notice Circle CCTP V2 `TokenMessengerV2`. Deployed at the same deterministic address on every
@@ -320,6 +354,16 @@ abstract contract BaseScript is Script {
 
     /// @notice Native (Circle-issued) USDC per chain. Overridable via the `USDC` env var.
     function getUSDC() public view returns (address) {
+        address usdc = getUSDCOrZero();
+        if (usdc == address(0)) {
+            revert ChainNotSupported("USDC", chainId);
+        }
+        return usdc;
+    }
+
+    /// @notice Like {getUSDC} but returns `address(0)` on unsupported chains instead of reverting.
+    ///         For orchestration scripts that skip bridges unavailable on the target chain.
+    function getUSDCOrZero() public view returns (address) {
         address envOverride = vm.envOr({ name: "USDC", defaultValue: address(0) });
         if (envOverride != address(0)) {
             return envOverride;
@@ -336,6 +380,10 @@ abstract contract BaseScript is Script {
         if (chainId == ChainId.OPTIMISM) {
             return 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85;
         }
-        revert ChainNotSupported("USDC", chainId);
+        if (chainId == ChainId.HYPEREVM) {
+            // Circle-issued native USDC on HyperEVM (live Sept 2025) — distinct from bridged HyperCore USDC.
+            return 0xb88339CB7199b77E23DB6E890353E22632Ba630f;
+        }
+        return address(0);
     }
 }
