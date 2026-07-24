@@ -1,0 +1,7 @@
+MakeOrders_Integration_Concrete_Test
+├── when one offer in the batch is invalid
+│  └── it should revert and ratify none
+└── when all offers are valid
+   ├── it should ratify every root
+   ├── it should return roots matching hashOffer
+   └── it should emit OrderMade per offer

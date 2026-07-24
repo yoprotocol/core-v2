@@ -1,0 +1,11 @@
+Withdraw_Integration_Concrete_Test
+├── when units zero
+│  └── it should revert with InvalidAmount
+├── when market not allowlisted for vault
+│  └── it should revert with MarketNotAllowed
+├── when adapter not authorized on midnight
+│  └── it should revert in midnight
+└── when authorized and funded
+   ├── it should burn the vault credit
+   ├── it should transfer loan token to the vault
+   └── it should emit MidnightMarketAction withdraw

@@ -1,0 +1,17 @@
+TakeSell_Integration_Concrete_Test
+├── when units zero
+│  └── it should revert with InvalidAmount
+├── when offer is a sell offer
+│  └── it should revert with WrongOfferSide
+├── when market not allowlisted for vault
+│  └── it should revert with MarketNotAllowed
+├── when offer tick below floor
+│  └── it should revert with TickBelowFloor
+├── when vault credit below units
+│  └── it should revert with InsufficientCredit
+├── when proceeds below min assets
+│  └── it should revert with SlippageExceeded
+└── when take succeeds
+   ├── it should reduce the vault credit by units
+   ├── it should send proceeds to the vault
+   └── it should emit MidnightMarketAction withdraw

@@ -1,0 +1,26 @@
+MakeOrder_Integration_Concrete_Test
+├── when market not allowlisted for vault
+│  └── it should revert with MarketNotAllowed
+└── when market allowlisted
+   ├── when caller is not the offer maker
+   │  └── it should revert with NotOfferMaker
+   ├── when ratifier is not the setter ratifier
+   │  └── it should revert with InvalidRatifier
+   ├── when callback is not empty
+   │  └── it should revert with CallbackNotEmpty
+   ├── when size caps are not exactly one nonzero
+   │  └── it should revert with InvalidOfferCaps
+   ├── when buy offer has non zero seller receiver
+   │  └── it should revert with InvalidReceiver
+   ├── when sell offer receiver is not the vault
+   │  └── it should revert with InvalidReceiver
+   ├── when sell offer is not reduce only
+   │  └── it should revert with NotReduceOnly
+   ├── when sell offer caps by assets
+   │  └── it should revert with SellCapMustBeUnits
+   ├── when sell offer tick below floor
+   │  └── it should revert with TickBelowFloor
+   └── when offer is valid
+      ├── it should ratify the single leaf root
+      ├── it should return root equal to hashOffer
+      └── it should emit OrderMade

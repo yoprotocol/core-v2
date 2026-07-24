@@ -1,0 +1,11 @@
+WithdrawAll_Integration_Concrete_Test
+├── when market not allowlisted for vault
+│  └── it should revert with MarketNotAllowed
+├── when no withdrawable position
+│  └── it should revert with NoPosition
+├── when withdrawable below credit
+│  └── it should redeem only the withdrawable amount
+└── when withdrawable at least credit
+   ├── it should redeem the full credit
+   ├── it should transfer loan token to the vault
+   └── it should emit MidnightMarketAction withdraw

@@ -1,0 +1,22 @@
+TakeBuy_Integration_Concrete_Test
+├── when units zero
+│  └── it should revert with InvalidAmount
+├── when max assets zero
+│  └── it should revert with InvalidAmount
+├── when offer is a buy offer
+│  └── it should revert with WrongOfferSide
+├── when market not allowlisted for vault
+│  └── it should revert with MarketNotAllowed
+├── when reentered through token transfer hook
+│  └── it should revert with ReentrancyGuardReentrantCall
+├── when take yields no credit delta
+│  └── it should revert with NoCreditDelta
+├── when take succeeds
+│  ├── it should pull max assets from the vault
+│  ├── it should reset midnight allowance to zero
+│  ├── it should sweep the remainder back to the vault
+│  ├── it should leave zero loan token in the adapter
+│  ├── it should increase the vault credit
+│  └── it should emit MidnightMarketAction deposit
+└── when position accrued loss
+   └── it should exclude the slash from the credit delta

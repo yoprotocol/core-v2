@@ -1,0 +1,12 @@
+CancelOrder_Integration_Concrete_Test
+├── when caller is not the offer maker
+│  └── it should revert with NotOfferMaker
+└── when caller is the offer maker
+   ├── given root not ratified
+   │  └── it should revert with RootNotRatified
+   ├── given market de listed
+   │  └── it should still unratify the root
+   └── given market allowlisted
+      ├── it should unratify the root
+      ├── it should return the root
+      └── it should emit OrderCancelled

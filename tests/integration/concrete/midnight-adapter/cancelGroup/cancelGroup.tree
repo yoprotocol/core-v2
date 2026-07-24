@@ -1,0 +1,6 @@
+CancelGroup_Integration_Concrete_Test
+├── when adapter not authorized on midnight
+│  └── it should revert in midnight
+└── when adapter authorized on midnight
+   ├── it should set group consumed to max
+   └── it should emit GroupCancelled
