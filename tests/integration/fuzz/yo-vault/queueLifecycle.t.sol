@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import { YoVaultBase_Test } from "../../concrete/yo-vault/YoVaultBase.t.sol";
 
-contract QueueLifecycle_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
+contract QueueLifecycleYoVaultIntegrationFuzzTest is YoVaultBase_Test {
     /// @dev Async queue invariants for partial fulfill:
     ///        - totalPendingAssets decreases by exactly `fulfillAssets`
     ///        - per-user pending decreases by exactly `(fulfillShares, fulfillAssets)`

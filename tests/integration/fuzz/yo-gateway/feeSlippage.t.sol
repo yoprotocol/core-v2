@@ -17,7 +17,7 @@ import { Integration_Test } from "../../Integration.t.sol";
 ///         **net** amount the receiver gets (post-fee), not the gross value `requestRedeem` returns.
 ///         Setup uses `MockFeeYoVault`, which reproduces the V3 YoVault behavior of returning gross
 ///         while delivering net.
-contract FeeSlippage_YoGateway_Integration_Fuzz_Test is Integration_Test {
+contract FeeSlippageYoGatewayIntegrationFuzzTest is Integration_Test {
     YoRegistry internal registry;
     YoGateway internal gateway;
     MockFeeYoVault internal feeVault;

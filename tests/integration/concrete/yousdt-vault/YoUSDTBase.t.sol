@@ -3,18 +3,17 @@ pragma solidity 0.8.34;
 
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IAuthority } from "src/interfaces/IAuthority.sol";
 import { IYoOracle } from "src/interfaces/IYoOracle.sol";
-import { YoVault } from "src/YoVault.sol";
 import { yoUSDT } from "src/yoUSDT.sol";
-
-import { MockAuthority } from "../../../mocks/MockAuthority.sol";
-import { Integration_Test } from "../../Integration.t.sol";
+import { YoVault } from "src/YoVault.sol";
+import { MockAuthority } from "./../../../mocks/MockAuthority.sol";
+import { Integration_Test } from "./../../Integration.t.sol";
 
 /// @notice Shared base for `yoUSDT` BTT tests. Deploys yoUSDT (which inherits YoVault) behind an
 ///         ERC-1967 proxy and mocks the NAV oracle at 1:1 against the yoUSD constant address.
-abstract contract YoUSDTBase_Test is Integration_Test {
+// solhint-disable-next-line contract-name-capwords
+abstract contract YoUSDTBaseTestBase_Test is Integration_Test {
     /// @dev Same constant as in `src/yoUSDT.sol`. Hardcoded relay destination and NAV reference.
     address internal constant YO_USD_ADDRESS = 0x0000000f2eB9f69274678c76222B35eEc7588a65;
     uint256 internal constant RELAY_PERCENTAGE = 95e16; // 95%

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import { AuthUpgradeable } from "src/base/AuthUpgradeable.sol";
 import { IYoApprovalRegistry } from "src/interfaces/IYoApprovalRegistry.sol";
 import { IYoVault } from "src/interfaces/IYoVault.sol";
-import { AuthUpgradeable } from "src/base/AuthUpgradeable.sol";
-
-import { YoVaultBase_Test } from "../YoVaultBase.t.sol";
+import { YoVaultBase_Test } from "./../YoVaultBase.t.sol";
 
 contract ApproveTokenIntegrationConcreteTest is YoVaultBase_Test {
     address private constant SPENDER = address(0xBEEF);

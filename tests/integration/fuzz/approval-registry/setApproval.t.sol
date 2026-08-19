@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import { Integration_Test } from "../../Integration.t.sol";
 
-contract SetApproval_Integration_Fuzz_Test is Integration_Test {
+contract SetApprovalIntegrationFuzzTest is Integration_Test {
     function testFuzz_SetApproval_RoundTrips(
         address vault,
         address token,

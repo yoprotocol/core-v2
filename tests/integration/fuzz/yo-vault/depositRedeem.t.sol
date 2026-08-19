@@ -5,7 +5,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { YoVaultBase_Test } from "../../concrete/yo-vault/YoVaultBase.t.sol";
 
-contract DepositRedeem_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
+contract DepositRedeemYoVaultIntegrationFuzzTest is YoVaultBase_Test {
     using Math for uint256;
 
     /// @dev Any deposit at parity oracle and no fees mints exactly `assets` shares.

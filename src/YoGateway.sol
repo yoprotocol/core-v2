@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
-import { Errors } from "./libraries/Errors.sol";
-import { IYoVault } from "./interfaces/IYoVault.sol";
 import { IYoGateway } from "./interfaces/IYoGateway.sol";
 import { IYoRegistry } from "./interfaces/IYoRegistry.sol";
+import { IYoVault } from "./interfaces/IYoVault.sol";
+import { Errors } from "./libraries/Errors.sol";
 
 /// __     __    _____       _
 /// \ \   / /   / ____|     | |

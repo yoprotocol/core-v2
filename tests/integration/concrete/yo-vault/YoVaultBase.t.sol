@@ -14,7 +14,8 @@ import { Integration_Test } from "../../Integration.t.sol";
 
 /// @notice Shared base for `YoVault` BTT tests. Deploys the harness behind an ERC-1967 proxy,
 ///         wires a `MockAuthority`, binds the shared `YoApprovalRegistry`, and pre-funds users.
-abstract contract YoVaultBase_Test is Integration_Test {
+// solhint-disable-next-line contract-name-capwords
+abstract contract YoVaultBaseTestBase_Test is Integration_Test {
     /// @dev Selector for `manage(address,bytes,uint256)` — overloaded so we hash explicitly.
     bytes4 internal constant MANAGE_SINGLE_SELECTOR = bytes4(keccak256("manage(address,bytes,uint256)"));
     /// @dev Selector for `manage(address[],bytes[],uint256[])`.

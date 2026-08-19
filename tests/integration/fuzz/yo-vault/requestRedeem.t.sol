@@ -5,7 +5,7 @@ import { Errors } from "src/libraries/Errors.sol";
 
 import { YoVaultBase_Test } from "../../concrete/yo-vault/YoVaultBase.t.sol";
 
-contract RequestRedeem_YoVault_Integration_Fuzz_Test is YoVaultBase_Test {
+contract RequestRedeemYoVaultIntegrationFuzzTest is YoVaultBase_Test {
     /// @dev When the vault has full liquidity, requestRedeem returns the assets-with-fee amount
     ///      (instant path) and burns shares.
     function testFuzz_RequestRedeem_InstantPath(uint256 assets) external {

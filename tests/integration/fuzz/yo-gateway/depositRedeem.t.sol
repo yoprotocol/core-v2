@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import { YoGatewayBase_Test } from "../../concrete/yo-gateway/YoGatewayBase.t.sol";
 
-contract DepositRedeem_YoGateway_Integration_Fuzz_Test is YoGatewayBase_Test {
+contract DepositRedeemYoGatewayIntegrationFuzzTest is YoGatewayBase_Test {
     /// @dev Deposit-then-redeem through the gateway is lossless on a 1:1 mock vault.
     function testFuzz_RoundTrip_Lossless(uint256 assets) external {
         assets = bound(assets, 1, 500_000e6);

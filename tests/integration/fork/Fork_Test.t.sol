@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import { Test } from "forge-std/src/Test.sol";
-
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import { Test } from "forge-std/src/Test.sol";
 import { IAuthority } from "src/interfaces/IAuthority.sol";
 import { IYoOracle } from "src/interfaces/IYoOracle.sol";
 import { YoApprovalRegistry } from "src/registries/YoApprovalRegistry.sol";
 import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.sol";
 import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
-import { YoRegistry } from "src/YoRegistry.sol";
 import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
+import { YoRegistry } from "src/YoRegistry.sol";
 import { YoVault } from "src/YoVault.sol";
-
-import { MockAuthority } from "../../mocks/MockAuthority.sol";
+import { MockAuthority } from "./../../mocks/MockAuthority.sol";
 
 /// @notice Shared base for fork-based e2e tests. Each child test forks a specific network
 ///         (Base / Ethereum mainnet) at a pinned block, then deploys a fresh YoVault + registry
@@ -23,7 +20,8 @@ import { MockAuthority } from "../../mocks/MockAuthority.sol";
 ///
 ///         Skips itself gracefully when the relevant RPC env var is unset, so CI without an
 ///         API_KEY_ALCHEMY won't break.
-abstract contract Fork_Test is Test {
+// solhint-disable-next-line contract-name-capwords
+abstract contract ForkTestFork_Test is Test {
     /// @dev Selector for the overloaded `manage(address,bytes,uint256)`.
     bytes4 internal constant MANAGE_SINGLE_SELECTOR = bytes4(keccak256("manage(address,bytes,uint256)"));
 
