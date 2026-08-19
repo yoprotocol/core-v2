@@ -27,6 +27,7 @@ import { YoApprovalRegistry } from "src/registries/YoApprovalRegistry.sol";
 import { YoBridgeRouteRegistry } from "src/registries/YoBridgeRouteRegistry.sol";
 import { YoERC4626VaultRegistry } from "src/registries/YoERC4626VaultRegistry.sol";
 import { YoMorphoMarketRegistry } from "src/registries/YoMorphoMarketRegistry.sol";
+import { YoPoolRegistry } from "src/registries/YoPoolRegistry.sol";
 import { YoSwapPairRegistry } from "src/registries/YoSwapPairRegistry.sol";
 import { MockAcrossSpokePool } from "./mocks/MockAcrossSpokePool.sol";
 import { MockCcipRouter } from "./mocks/MockCcipRouter.sol";
@@ -89,6 +90,7 @@ abstract contract Base_Test is Assertions, Modifiers {
     YoSwapPairRegistry internal pairRegistry;
     YoERC4626VaultRegistry internal yieldVaultRegistry;
     YoBridgeRouteRegistry internal routeRegistry;
+    YoPoolRegistry internal poolRegistry;
     MockYoRegistry internal yoRegistry;
     YoMorphoAdapter internal morphoAdapter;
     YoSwapAdapter internal swapAdapter;
@@ -172,6 +174,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         pairRegistry = new YoSwapPairRegistry(users.owner);
         yieldVaultRegistry = new YoERC4626VaultRegistry(users.owner);
         routeRegistry = new YoBridgeRouteRegistry(users.owner);
+        poolRegistry = new YoPoolRegistry(users.owner, users.guardian);
         morphoAdapter = new YoMorphoAdapter(IMorpho(address(mockMorpho)), marketRegistry, yoRegistry);
         swapAdapter = new YoSwapAdapter({
             _aggregator: address(mockAggregator),
@@ -225,6 +228,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         vm.label(address(yieldVaultRegistry), "YoERC4626VaultRegistry");
         vm.label(address(yoRegistry), "YoRegistry");
         vm.label(address(routeRegistry), "YoBridgeRouteRegistry");
+        vm.label(address(poolRegistry), "YoPoolRegistry");
         vm.label(address(morphoAdapter), "YoMorphoAdapter");
         vm.label(address(swapAdapter), "YoSwapAdapter");
         vm.label(address(yieldAdapter), "YoERC4626Adapter");

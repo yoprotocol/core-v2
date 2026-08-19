@@ -1,0 +1,51 @@
+SetPool_PoolRegistry_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert
+└── when caller owner
+   ├── when vault zero
+   │  └── it should revert with ZeroAddress
+   ├── when adapter zero and not idle only
+   │  └── it should revert with ZeroAddress
+   ├── when offchain id empty
+   │  └── it should revert with EmptyOffchainId
+   ├── when status none
+   │  └── it should revert with InvalidStatus
+   ├── when venue kind zero
+   │  └── it should revert with InvalidVenueKind
+   ├── when chain id zero
+   │  └── it should revert with InvalidChainId
+   ├── when risk score exceeds max
+   │  └── it should revert with InvalidRiskScore
+   ├── when elasticity exceeds max
+   │  └── it should revert with InvalidElasticity
+   ├── when entry slippage exceeds max
+   │  └── it should revert with InvalidEntrySlippage
+   ├── when exit cost exceeds max
+   │  └── it should revert with InvalidExitCost
+   └── when config valid
+      ├── given pool new
+      │  ├── given status active
+      │  │  ├── it should store the config
+      │  │  ├── it should add the pool to the roster
+      │  │  ├── it should increment the active pool count
+      │  │  ├── it should increment the epoch
+      │  │  └── it should emit PoolSet
+      │  ├── given status active and idle only
+      │  │  ├── it should allow a zero adapter
+      │  │  ├── it should add the pool to the roster
+      │  │  └── it should not change the active pool count
+      │  └── given status exit only
+      │     ├── it should add the pool to the roster
+      │     ├── it should not change the active pool count
+      │     └── it should emit PoolSet
+      └── given pool existing
+         ├── given status changes active to exit only
+         │  ├── it should decrement the active pool count
+         │  └── it should keep the pool in the roster
+         ├── given status changes exit only to active
+         │  └── it should increment the active pool count
+         ├── given pool becomes idle only
+         │  └── it should decrement the active pool count
+         └── given status stays active
+            ├── it should not change the active pool count
+            └── it should update the config

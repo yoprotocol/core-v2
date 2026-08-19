@@ -1,0 +1,20 @@
+DemoteToExitOnly_PoolRegistry_Integration_Concrete_Test
+├── when caller neither guardian nor owner
+│  └── it should revert with UnauthorizedCaller
+└── when caller authorized
+   ├── given pool unknown
+   │  └── it should revert with PoolNotActive
+   ├── given pool exit only
+   │  └── it should revert with PoolNotActive
+   ├── given pool active and idle only
+   │  ├── it should set the status to exit only
+   │  └── it should not change the active pool count
+   └── given pool active
+      ├── when caller guardian
+      │  ├── it should set the status to exit only
+      │  ├── it should decrement the active pool count
+      │  ├── it should keep the pool in the roster
+      │  ├── it should increment the epoch
+      │  └── it should emit PoolDemoted
+      └── when caller owner
+         └── it should set the status to exit only

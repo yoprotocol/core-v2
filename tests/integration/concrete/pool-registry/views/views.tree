@@ -1,0 +1,15 @@
+Views_PoolRegistry_Integration_Concrete_Test
+├── given empty roster
+│  ├── it should return zero pool count
+│  ├── it should return zero active pool count
+│  ├── it should return an empty pool ids array
+│  ├── it should return an empty pools array
+│  ├── it should return zero epoch
+│  └── it should return a config with status none
+└── given populated roster
+   ├── it should return the roster size as pool count
+   ├── it should count only active allocatable pools
+   ├── it should list every pool id
+   ├── it should list every pool with its config
+   ├── it should derive pool ids from the offchain string
+   └── it should keep views consistent after demote and remove

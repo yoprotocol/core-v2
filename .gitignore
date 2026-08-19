@@ -11,7 +11,7 @@ out-*/
 typechain-types/
 
 # files
-.env
+.env*
 *.log
 .DS_Store
 .pnp.*

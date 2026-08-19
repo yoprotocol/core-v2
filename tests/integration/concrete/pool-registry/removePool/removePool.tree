@@ -1,0 +1,14 @@
+RemovePool_PoolRegistry_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert
+└── when caller owner
+   ├── given pool active
+   │  └── it should revert with PoolActive
+   ├── given pool unknown
+   │  └── it should revert with PoolNotFound
+   └── given pool exit only
+      ├── it should remove the pool from the roster
+      ├── it should delete the config
+      ├── it should not change the active pool count
+      ├── it should increment the epoch
+      └── it should emit PoolRemoved
