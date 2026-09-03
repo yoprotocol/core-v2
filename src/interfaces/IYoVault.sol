@@ -32,6 +32,8 @@ interface IYoVault {
         uint256 shares,
         bool indexed instant
     );
+    /// @dev `assets` is the gross paid, which a current-price fulfilment can set below the
+    ///      reservation released for `shares`.
     event RequestFulfilled(address indexed receiver, uint256 shares, uint256 assets);
     event RequestCancelled(address indexed receiver, uint256 shares, uint256 assets);
 

@@ -1,13 +1,41 @@
-FulfillRedeem_Integration_Concrete_Test
-├── when owner fulfills full pending request
-│  ├── it should zero the pending entry
-│  ├── it should decrement totalPendingAssets
-│  └── it should release assets to the receiver
-├── when called twice for the same fully-fulfilled request
-│  └── it should revert with InvalidSharesAmount
-├── when shares argument exceeds pending shares
-│  └── it should revert with InvalidSharesAmount
-├── when assets argument exceeds pending assets
-│  └── it should revert with InvalidAssetsAmount
-└── when vault has insufficient asset balance
-   └── it should revert with ERC20 transfer failure
+FulfillRedeemIntegrationConcreteTest
+├── when the caller is unauthorized
+│   └── it should revert
+├── when shares is zero
+│   └── it should revert
+├── when the receiver has no pending request
+│   └── it should revert
+├── when shares exceeds the pending entry
+│   └── it should revert
+├── given the vault is paused
+│   └── it should revert
+├── when the caller is an authorized operator
+│   └── it should settle the request
+├── when fulfilled whole at the request price
+│   ├── it should burn the escrowed shares
+│   ├── it should pay the reserved gross
+│   ├── it should zero the pending entry
+│   └── it should release the reserved amount from totalPendingAssets
+├── when fulfilled partially at the request price
+│   ├── it should release the reserved amount proportionally
+│   ├── it should leave the remainder pending
+│   └── it should settle the remainder exactly on the final fulfilment
+├── when the price dropped and fulfilled at the current price
+│   ├── it should pay the shares at the current oracle price
+│   └── it should release the full reservation
+├── when the price rose and fulfilled at the current price
+│   └── it should revert
+├── when the price is unchanged and fulfilled partially at the current price
+│   └── it should pay the pro-rata value without tripping the guard
+├── when fulfilled at the current price with a fee
+│   ├── it should pay the receiver net of the fee
+│   └── it should pay the fee to the fee recipient
+├── when a third party inflated the entry
+│   └── it should settle the legitimate portion and leave the dust pending
+├── when two requests accumulated on the receiver
+│   └── it should settle the combined entry whole
+├── when the oracle price is zero
+│   ├── it should settle at the request price without reading the oracle
+│   └── it should refuse the current price
+└── when the vault has insufficient asset balance
+    └── it should revert

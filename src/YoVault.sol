@@ -194,6 +194,7 @@ contract YoVault is
     /// @return Asset amount on instant redemption, or `REQUEST_ID` (0) when queued.
     function requestRedeem(uint256 shares, address receiver, address owner) public whenNotPaused returns (uint256) {
         require(receiver != address(0), Errors.ZeroReceiver());
+        require(receiver != address(this), Errors.SelfReceiverNotAllowed());
         require(shares > 0, Errors.SharesAmountZero());
         require(owner == msg.sender, Errors.NotSharesOwner());
         require(balanceOf(owner) >= shares, Errors.InsufficientShares());
@@ -219,39 +220,65 @@ contract YoVault is
         return REQUEST_ID;
     }
 
-    /// @notice Fulfill a pending redemption — burns escrowed shares and transfers assets.
+    /// @notice Fulfill `shares` of a receiver's pending redemption — burns the escrowed shares and
+    /// pays the assets. Reverts while paused.
+    /// @dev The reserved gross is released in proportion to `shares`; the final fulfilment takes
+    ///      the exact remainder so no dust is left behind. The operator chooses the price: the
+    ///      reserved gross (the default), or the current oracle price (`atCurrentPrice`) for
+    ///      exceptional events such as a haircut on the underlying. Current-price settlement is
+    ///      refused when the entry's current value exceeds its reservation, so it can only reduce
+    ///      the payout and never draws on liquidity reserved for others. The withdrawal fee
+    ///      applies at the live rate either way; `totalPendingAssets` always releases the reserved
+    ///      amount. A slice whose gross value rounds to zero is refused. Only the current-price
+    ///      path reads the oracle.
     /// @param receiver Address whose pending request is being fulfilled.
-    /// @param shares Amount of escrowed shares to burn.
-    /// @param assetsWithFee Gross asset amount (including withdrawal fee).
-    function fulfillRedeem(address receiver, uint256 shares, uint256 assetsWithFee) external requiresAuth {
+    /// @param shares Escrowed shares to settle; the reserved assets follow proportionally.
+    /// @param atCurrentPrice Pay the shares at the current oracle price instead of the reserved gross.
+    function fulfillRedeem(address receiver, uint256 shares, bool atCurrentPrice) external requiresAuth whenNotPaused {
         PendingRedeem storage pending = _pendingRedeem[receiver];
-        require(pending.shares != 0 && shares <= pending.shares, Errors.InvalidSharesAmount());
-        require(pending.assets != 0 && assetsWithFee <= pending.assets, Errors.InvalidAssetsAmount());
+        uint256 pendingShares = pending.shares;
+        require(shares != 0 && shares <= pendingShares, Errors.InvalidSharesAmount());
+        uint256 pendingAssets = pending.assets;
 
-        pending.shares -= shares;
-        pending.assets -= assetsWithFee;
-        totalPendingAssets -= assetsWithFee;
+        // Pro-rata release; on the final slice `mulDiv(a, n, n) == a`, so the exact remainder settles.
+        uint256 reservedAssets = pendingAssets.mulDiv(shares, pendingShares, Math.Rounding.Floor);
+        uint256 assetsWithFee = reservedAssets;
+        if (atCurrentPrice) {
+            // Judged on the whole entry. Reservations were floored per request, so an entry built
+            // from several requests can exceed its reservation by up to (requests - 1) wei at an
+            // unchanged price and be refused; use the request price then — the payout is the same.
+            uint256 currentValue = _convertToAssets(pendingShares, Math.Rounding.Floor);
+            require(currentValue <= pendingAssets, Errors.CurrentPriceAboveRequestPrice(currentValue, pendingAssets));
+            assetsWithFee = currentValue.mulDiv(shares, pendingShares, Math.Rounding.Floor);
+        }
+        // Refuse slices whose gross rounds to zero, so at most sub-wei rounding is ever parked in
+        // the reservation. (The receiver's net can still round to zero on wei-sized slices under a
+        // nonzero fee; that wei is collected as fee, not lost.)
+        require(assetsWithFee != 0, Errors.InvalidAssetsAmount());
+
+        pending.shares = pendingShares - shares;
+        pending.assets = pendingAssets - reservedAssets;
+        totalPendingAssets -= reservedAssets;
 
         emit RequestFulfilled(receiver, shares, assetsWithFee);
         // burn the shares from the vault and transfer the assets to the receiver
         _withdraw(address(this), receiver, address(this), assetsWithFee, shares);
     }
 
-    /// @notice Cancel a pending redemption — returns escrowed shares to the receiver.
+    /// @notice Cancel a receiver's whole pending redemption — returns the escrowed shares to the
+    /// receiver. Reverts while paused.
     /// @param receiver Address whose pending request is being cancelled.
-    /// @param shares Amount of escrowed shares to return.
-    /// @param assetsWithFee Gross asset amount to release from the pending total.
-    function cancelRedeem(address receiver, uint256 shares, uint256 assetsWithFee) external requiresAuth {
+    function cancelRedeem(address receiver) external requiresAuth whenNotPaused {
         PendingRedeem storage pending = _pendingRedeem[receiver];
-        require(pending.shares != 0 && shares <= pending.shares, Errors.InvalidSharesAmount());
-        require(pending.assets != 0 && assetsWithFee <= pending.assets, Errors.InvalidAssetsAmount());
+        uint256 shares = pending.shares;
+        require(shares != 0, Errors.InvalidSharesAmount());
+        uint256 reservedAssets = pending.assets;
 
-        pending.shares -= shares;
-        pending.assets -= assetsWithFee;
-        totalPendingAssets -= assetsWithFee;
+        delete _pendingRedeem[receiver];
+        totalPendingAssets -= reservedAssets;
 
-        emit RequestCancelled(receiver, shares, assetsWithFee);
-        // transfer the shares back to the owner
+        emit RequestCancelled(receiver, shares, reservedAssets);
+        // return the escrowed shares to the receiver
         _transfer(address(this), receiver, shares);
     }
 

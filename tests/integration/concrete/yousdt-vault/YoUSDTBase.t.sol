@@ -13,7 +13,7 @@ import { Integration_Test } from "./../../Integration.t.sol";
 /// @notice Shared base for `yoUSDT` BTT tests. Deploys yoUSDT (which inherits YoVault) behind an
 ///         ERC-1967 proxy and mocks the NAV oracle at 1:1 against the yoUSD constant address.
 // solhint-disable-next-line contract-name-capwords
-abstract contract YoUSDTBaseTestBase_Test is Integration_Test {
+abstract contract YoUSDTBase_Test is Integration_Test {
     /// @dev Same constant as in `src/yoUSDT.sol`. Hardcoded relay destination and NAV reference.
     address internal constant YO_USD_ADDRESS = 0x0000000f2eB9f69274678c76222B35eEc7588a65;
     uint256 internal constant RELAY_PERCENTAGE = 95e16; // 95%

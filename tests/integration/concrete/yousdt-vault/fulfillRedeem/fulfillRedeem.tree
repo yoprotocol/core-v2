@@ -1,0 +1,3 @@
+FulfillRedeemYoUSDTIntegrationConcreteTest
+└── when fulfilled at the current price after a haircut
+    └── it should price the shares against the yoUSD oracle

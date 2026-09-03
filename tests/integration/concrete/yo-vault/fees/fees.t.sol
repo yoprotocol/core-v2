@@ -155,7 +155,7 @@ contract FeesIntegrationConcreteTest is YoVaultBase_Test {
         assertEq(pendingShares, aliceShares);
 
         vm.prank(users.owner);
-        yoVault.fulfillRedeem(users.alice, pendingShares, pendingAssets);
+        yoVault.fulfillRedeem(users.alice, pendingShares, false);
 
         (uint256 pendingAssetsAfter, uint256 pendingSharesAfter) = yoVault.pendingRedeemRequest(users.alice);
 

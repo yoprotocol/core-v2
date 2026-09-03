@@ -15,7 +15,7 @@ import { Integration_Test } from "../../Integration.t.sol";
 /// @notice Shared base for `YoVault` BTT tests. Deploys the harness behind an ERC-1967 proxy,
 ///         wires a `MockAuthority`, binds the shared `YoApprovalRegistry`, and pre-funds users.
 // solhint-disable-next-line contract-name-capwords
-abstract contract YoVaultBaseTestBase_Test is Integration_Test {
+abstract contract YoVaultBase_Test is Integration_Test {
     /// @dev Selector for `manage(address,bytes,uint256)` — overloaded so we hash explicitly.
     bytes4 internal constant MANAGE_SINGLE_SELECTOR = bytes4(keccak256("manage(address,bytes,uint256)"));
     /// @dev Selector for `manage(address[],bytes[],uint256[])`.
@@ -48,6 +48,29 @@ abstract contract YoVaultBaseTestBase_Test is Integration_Test {
         _authorize(users.owner, address(usdc), IERC20.transfer.selector);
         vm.prank(users.owner);
         yoVault.manage(address(usdc), data, 0);
+    }
+
+    /// @dev Set the oracle to `price`, deposit `assets` for `user`, drain the deposit back out,
+    ///      and queue every share it minted to `user`. Returns what the pending entry gained.
+    function _queueRedeem(
+        address user,
+        uint256 price,
+        uint256 assets
+    )
+        internal
+        returns (uint256 shares, uint256 reserved)
+    {
+        _setOraclePrice(price);
+        uint256 sharesBefore = yoVault.balanceOf(user);
+        (uint256 reservedBefore,) = yoVault.pendingRedeemRequest(user);
+        vm.prank(user);
+        yoVault.deposit(assets, user);
+        _moveAssetsFromVault(assets);
+        shares = yoVault.balanceOf(user) - sharesBefore;
+        vm.prank(user);
+        yoVault.requestRedeem(shares, user, user);
+        (uint256 reservedAfter,) = yoVault.pendingRedeemRequest(user);
+        reserved = reservedAfter - reservedBefore;
     }
 
     function setUp() public virtual override {

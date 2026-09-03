@@ -4,6 +4,8 @@ RequestRedeem_Integration_Concrete_Test
 │  └── it should set totalAssets to zero
 ├── when receiver is zero
 │  └── it should revert with ZeroReceiver
+├── when receiver is the vault itself
+│  └── it should revert with SelfReceiverNotAllowed
 ├── when shares is zero
 │  └── it should revert with SharesAmountZero
 ├── when caller is not the shares owner

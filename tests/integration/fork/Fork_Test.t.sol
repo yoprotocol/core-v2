@@ -21,7 +21,7 @@ import { MockAuthority } from "./../../mocks/MockAuthority.sol";
 ///         Skips itself gracefully when the relevant RPC env var is unset, so CI without an
 ///         API_KEY_ALCHEMY won't break.
 // solhint-disable-next-line contract-name-capwords
-abstract contract ForkTestFork_Test is Test {
+abstract contract Fork_Test is Test {
     /// @dev Selector for the overloaded `manage(address,bytes,uint256)`.
     bytes4 internal constant MANAGE_SINGLE_SELECTOR = bytes4(keccak256("manage(address,bytes,uint256)"));
 

@@ -34,6 +34,14 @@ contract RequestRedeemIntegrationConcreteTest is YoVaultBase_Test {
         yoVault.requestRedeem(aliceShares, address(0), users.alice);
     }
 
+    function test_RevertWhen_SelfReceiver() external {
+        uint256 aliceShares = yoVault.balanceOf(users.alice);
+
+        vm.prank(users.alice);
+        vm.expectRevert(Errors.SelfReceiverNotAllowed.selector);
+        yoVault.requestRedeem(aliceShares, address(yoVault), users.alice);
+    }
+
     function test_RevertWhen_SharesAmountZero() external {
         vm.prank(users.alice);
         vm.expectRevert(Errors.SharesAmountZero.selector);

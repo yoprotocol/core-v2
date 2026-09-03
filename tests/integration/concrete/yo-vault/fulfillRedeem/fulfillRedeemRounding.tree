@@ -1,0 +1,23 @@
+FulfillRedeemRoundingIntegrationConcreteTest
+├── when the reservation does not divide evenly across two partials
+│   ├── it should floor the first slice
+│   └── it should pay the exact remainder on the last slice
+├── when the entry is drained one share at a time
+│   └── it should pay exactly the reservation in total
+├── when the reservation is below the share count
+│   └── it should conserve the reservation across partials
+├── when the entry accumulated requests at two prices
+│   └── it should conserve the combined reservation across partials
+├── when a slice's proportional reservation floors to zero
+│   ├── it should refuse the slice
+│   └── it should settle a slice that carries a wei
+├── when fulfilled at the unchanged current price after a partial
+│   └── it should not trip the guard
+├── when fulfilled partially at a dropped current price
+│   ├── it should pay the floored pro-rata current value
+│   └── it should release the floored pro-rata reservation
+├── when an accumulated entry is settled at the unchanged current price
+│   ├── it should refuse by the per-request rounding slack
+│   └── it should settle at the request price instead
+└── when the last slice is one share
+    └── it should pay the exact remainder

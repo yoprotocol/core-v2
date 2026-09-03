@@ -28,7 +28,8 @@ library Errors {
     /// @notice Thrown when a claim request is fulfilled with an invalid shares amount.
     error InvalidSharesAmount();
 
-    /// @notice Thrown when a withdraw is attempted with an amount different than the claimable assets.
+    /// @notice Thrown when a fulfilment slice's gross value rounds to zero.
+    /// @dev Same selector as the V2 error of this name, so existing revert decoders stay valid.
     error InvalidAssetsAmount();
 
     /// @notice Thrown when the new max percentage is greater than the current max percentage.
@@ -50,6 +51,13 @@ library Errors {
 
     /// @notice Thrown when the receiver is zero.
     error ZeroReceiver();
+
+    /// @notice Thrown when the redemption receiver is the vault itself; cancel would strand the shares.
+    error SelfReceiverNotAllowed();
+
+    /// @notice Thrown when a current-price fulfilment is attempted while the current price is
+    ///         above the request price: the entry's current value exceeds its reserved value.
+    error CurrentPriceAboveRequestPrice(uint256 currentValue, uint256 reservedValue);
 
     /*//////////////////////////////////////////////////////////////////////////
                                        ESCROW
