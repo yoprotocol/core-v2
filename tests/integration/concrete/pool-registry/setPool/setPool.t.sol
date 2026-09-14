@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-
 import { IYoPoolRegistry, PoolId } from "src/interfaces/IYoPoolRegistry.sol";
 
 import { Integration_Test } from "../../../Integration.t.sol";
 
-contract SetPool_PoolRegistry_Integration_Concrete_Test is Integration_Test {
+contract SetPoolPoolRegistryIntegrationConcreteTest is Integration_Test {
     string internal constant OFFCHAIN_ID = "base:erc4626:mock-yield-vault";
 
     function _config(IYoPoolRegistry.PoolStatus status) private view returns (IYoPoolRegistry.PoolConfig memory) {
@@ -27,10 +25,66 @@ contract SetPool_PoolRegistry_Integration_Concrete_Test is Integration_Test {
         });
     }
 
-    function test_RevertWhen_CallerNotOwner() external {
+    function test_WhenCallerNeitherOwnerNorOperator() external {
         vm.prank(users.eve);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, users.eve));
+        vm.expectRevert(abi.encodeWithSelector(IYoPoolRegistry.UnauthorizedCaller.selector, users.eve));
         poolRegistry.setPool(users.vault, OFFCHAIN_ID, _config(IYoPoolRegistry.PoolStatus.ACTIVE));
+    }
+
+    modifier whenCallerOperator() {
+        _;
+    }
+
+    function test_GivenPoolNotListed() external whenCallerOperator {
+        vm.prank(users.operator);
+        vm.expectRevert(abi.encodeWithSelector(IYoPoolRegistry.UnauthorizedCaller.selector, users.operator));
+        poolRegistry.setPool(users.vault, OFFCHAIN_ID, _config(IYoPoolRegistry.PoolStatus.ACTIVE));
+    }
+
+    modifier givenPoolListed() {
+        vm.prank(users.owner);
+        poolRegistry.setPool(users.vault, OFFCHAIN_ID, _config(IYoPoolRegistry.PoolStatus.ACTIVE));
+        _;
+    }
+
+    function test_WhenStatusChangesExitOnlyToActive() external whenCallerOperator givenPoolListed {
+        vm.prank(users.owner);
+        poolRegistry.setPool(users.vault, OFFCHAIN_ID, _config(IYoPoolRegistry.PoolStatus.EXIT_ONLY));
+
+        vm.prank(users.operator);
+        vm.expectRevert(abi.encodeWithSelector(IYoPoolRegistry.UnauthorizedCaller.selector, users.operator));
+        poolRegistry.setPool(users.vault, OFFCHAIN_ID, _config(IYoPoolRegistry.PoolStatus.ACTIVE));
+    }
+
+    function test_WhenStatusChangesActiveToExitOnly() external whenCallerOperator givenPoolListed {
+        IYoPoolRegistry.PoolConfig memory demoted = _config(IYoPoolRegistry.PoolStatus.EXIT_ONLY);
+        PoolId id = poolRegistry.computePoolId(OFFCHAIN_ID);
+
+        vm.expectEmit(true, true, true, true, address(poolRegistry));
+        emit IYoPoolRegistry.PoolSet(users.vault, id, demoted, 2, OFFCHAIN_ID);
+        vm.prank(users.operator);
+        poolRegistry.setPool(users.vault, OFFCHAIN_ID, demoted);
+
+        assertEq(
+            uint8(poolRegistry.configOf(users.vault, id).status),
+            uint8(IYoPoolRegistry.PoolStatus.EXIT_ONLY),
+            "status not exit only"
+        );
+        assertEq(poolRegistry.activePoolCount(users.vault), 0, "active count not decremented");
+    }
+
+    function test_WhenStatusUnchanged() external whenCallerOperator givenPoolListed {
+        IYoPoolRegistry.PoolConfig memory updated = _config(IYoPoolRegistry.PoolStatus.ACTIVE);
+        updated.riskScore = 42;
+        PoolId id = poolRegistry.computePoolId(OFFCHAIN_ID);
+
+        vm.expectEmit(true, true, true, true, address(poolRegistry));
+        emit IYoPoolRegistry.PoolSet(users.vault, id, updated, 2, OFFCHAIN_ID);
+        vm.prank(users.operator);
+        poolRegistry.setPool(users.vault, OFFCHAIN_ID, updated);
+
+        assertEq(abi.encode(poolRegistry.configOf(users.vault, id)), abi.encode(updated), "config not updated");
+        assertEq(poolRegistry.epoch(users.vault), 2, "epoch not incremented");
     }
 
     function test_WhenVaultZero() external whenCallerOwner {

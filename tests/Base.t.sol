@@ -4,12 +4,12 @@ pragma solidity 0.8.34;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { YoAcrossAdapter } from "src/adapters/across/YoAcrossAdapter.sol";
-import { YoCctpAdapter } from "src/adapters/cctp/YoCctpAdapter.sol";
 import { YoCcipAdapter } from "src/adapters/ccip/YoCcipAdapter.sol";
+import { YoCctpAdapter } from "src/adapters/cctp/YoCctpAdapter.sol";
 import { YoERC4626Adapter } from "src/adapters/erc4626/YoERC4626Adapter.sol";
 import { YoIPORAdapter } from "src/adapters/ipor/YoIPORAdapter.sol";
-import { YoMayanAdapter } from "src/adapters/mayan/YoMayanAdapter.sol";
 import { YoLidoAdapter } from "src/adapters/lido/YoLidoAdapter.sol";
+import { YoMayanAdapter } from "src/adapters/mayan/YoMayanAdapter.sol";
 import { YoMorphoAdapter } from "src/adapters/morpho/YoMorphoAdapter.sol";
 import { YoSwapAdapter } from "src/adapters/swap/YoSwapAdapter.sol";
 import { IAcrossSpokePool } from "src/interfaces/external/IAcrossSpokePool.sol";
@@ -174,7 +174,7 @@ abstract contract Base_Test is Assertions, Modifiers {
         pairRegistry = new YoSwapPairRegistry(users.owner);
         yieldVaultRegistry = new YoERC4626VaultRegistry(users.owner);
         routeRegistry = new YoBridgeRouteRegistry(users.owner);
-        poolRegistry = new YoPoolRegistry(users.owner, users.guardian);
+        poolRegistry = new YoPoolRegistry(users.owner, users.guardian, users.operator);
         morphoAdapter = new YoMorphoAdapter(IMorpho(address(mockMorpho)), marketRegistry, yoRegistry);
         swapAdapter = new YoSwapAdapter({
             _aggregator: address(mockAggregator),

@@ -120,6 +120,9 @@ interface IYoPoolRegistry {
     /// @notice Emitted when the guardian address changes (including at construction).
     event GuardianSet(address indexed guardian);
 
+    /// @notice Emitted when the operator address changes (including at construction).
+    event OperatorSet(address indexed operator);
+
     error ZeroAddress();
     error RenounceDisabled();
     error EmptyOffchainId();
@@ -135,10 +138,13 @@ interface IYoPoolRegistry {
     error PoolNotActive(PoolId id);
     error UnauthorizedCaller(address caller);
 
-    /// @notice Add a pool to `vault`'s whitelist or update its config. Owner-only.
+    /// @notice Add a pool to `vault`'s whitelist or update its config. The owner may list a new
+    ///         pool and update any listed pool. The operator may only update a listed pool; the
+    ///         one `status` change it may make is `ACTIVE` -> `EXIT_ONLY`.
     /// @dev    The pool id is derived on-chain as `keccak256(bytes(offchainId))`, so the join key
     ///         cannot drift from the emitted string. `config.status` must not be `NONE` — removal
-    ///         goes through {removePool}.
+    ///         goes through {removePool}. Listing and re-activation stay with the owner so the
+    ///         operator cannot grow the whitelist or undo a demotion (its own or the guardian's).
     /// @param vault      The YO vault the pool belongs to.
     /// @param offchainId The off-chain pool identifier string; must be non-empty.
     /// @param config     The config to store; see {PoolConfig} for field bounds.
@@ -160,8 +166,16 @@ interface IYoPoolRegistry {
     ///         owner can always demote).
     function setGuardian(address newGuardian) external;
 
+    /// @notice Set the operator address. Owner-only. `address(0)` disables the operator role (the
+    ///         owner can always update).
+    function setOperator(address newOperator) external;
+
     /// @notice The guardian able to demote pools to `EXIT_ONLY`; `address(0)` when disabled.
     function guardian() external view returns (address);
+
+    /// @notice The operator able to update the config of listed pools; `address(0)` when
+    ///         disabled.
+    function operator() external view returns (address);
 
     /// @notice The whitelist epoch of `vault`: incremented on every `setPool`, `removePool`, and
     ///         `demoteToExitOnly` write. Starts at zero.

@@ -13,8 +13,10 @@ import { IYoPoolRegistry, PoolId } from "../interfaces/IYoPoolRegistry.sol";
 ///         the governance chain records pools across every execution chain (each pool carries its
 ///         `chainId`). See `IYoPoolRegistry` for the decision-layer rationale; this contract does
 ///         not gate execution.
-/// @dev    Adds are owner-only (intended to sit behind the timelock as the LAST call of the
-///         onboarding batch). The guardian holds exactly one power — demoting a pool to
+/// @dev    Three roles. The owner (governance) lists, updates, and removes pools (intended to sit
+///         behind the timelock as the LAST call of the onboarding batch). The operator may only
+///         update the config of an already-listed pool; the one status change it may make is
+///         `ACTIVE` -> `EXIT_ONLY`. The guardian holds exactly one power — demoting a pool to
 ///         `EXIT_ONLY` — so emergency de-listing does not wait out the timelock delay.
 contract YoPoolRegistry is Ownable2Step, IYoPoolRegistry {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -33,6 +35,9 @@ contract YoPoolRegistry is Ownable2Step, IYoPoolRegistry {
     address public guardian;
 
     /// @inheritdoc IYoPoolRegistry
+    address public operator;
+
+    /// @inheritdoc IYoPoolRegistry
     mapping(address vault => uint64 currentEpoch) public epoch;
 
     /// @dev Enumerable per-vault roster of pool ids (both `ACTIVE` and `EXIT_ONLY`). Enumerability
@@ -45,13 +50,16 @@ contract YoPoolRegistry is Ownable2Step, IYoPoolRegistry {
 
     mapping(address vault => mapping(PoolId id => PoolConfig config)) private _configs;
 
-    constructor(address initialOwner, address initialGuardian) Ownable(initialOwner) {
+    constructor(address initialOwner, address initialGuardian, address initialOperator) Ownable(initialOwner) {
         if (initialOwner == address(0)) {
             revert ZeroAddress();
         }
-        // A zero guardian is valid — it disables the kill-switch until `setGuardian`.
+        // A zero guardian / operator is valid — it disables that role until `setGuardian` /
+        // `setOperator`.
         guardian = initialGuardian;
         emit GuardianSet(initialGuardian);
+        operator = initialOperator;
+        emit OperatorSet(initialOperator);
     }
 
     /// @notice Disabled — renouncing ownership would freeze the whitelist irrevocably (pools could
@@ -62,7 +70,22 @@ contract YoPoolRegistry is Ownable2Step, IYoPoolRegistry {
     }
 
     /// @inheritdoc IYoPoolRegistry
-    function setPool(address vault, string calldata offchainId, PoolConfig calldata config) external onlyOwner {
+    function setPool(address vault, string calldata offchainId, PoolConfig calldata config) external {
+        PoolId id = computePoolId(offchainId);
+        PoolConfig storage previous = _configs[vault][id];
+        if (msg.sender != owner()) {
+            // The operator may only re-configure a listed pool. Its status may move
+            // `ACTIVE` -> `EXIT_ONLY` only (a demotion, like the guardian's kill-switch): listing
+            // and re-activation stay with the owner, so the operator cannot grow the whitelist
+            // or undo a demotion.
+            bool listed = previous.status != PoolStatus.NONE;
+            bool statusAllowed = config.status == previous.status
+                || (previous.status == PoolStatus.ACTIVE && config.status == PoolStatus.EXIT_ONLY);
+            if (msg.sender != operator || !listed || !statusAllowed) {
+                revert UnauthorizedCaller(msg.sender);
+            }
+        }
+
         if (vault == address(0) || (config.adapter == address(0) && !config.idleOnly)) {
             revert ZeroAddress();
         }
@@ -71,8 +94,6 @@ contract YoPoolRegistry is Ownable2Step, IYoPoolRegistry {
         }
         _validateConfig(config);
 
-        PoolId id = computePoolId(offchainId);
-        PoolConfig storage previous = _configs[vault][id];
         bool wasCounted = previous.status == PoolStatus.ACTIVE && !previous.idleOnly;
         bool nowCounted = config.status == PoolStatus.ACTIVE && !config.idleOnly;
         if (nowCounted && !wasCounted) {
@@ -126,6 +147,12 @@ contract YoPoolRegistry is Ownable2Step, IYoPoolRegistry {
     function setGuardian(address newGuardian) external onlyOwner {
         guardian = newGuardian;
         emit GuardianSet(newGuardian);
+    }
+
+    /// @inheritdoc IYoPoolRegistry
+    function setOperator(address newOperator) external onlyOwner {
+        operator = newOperator;
+        emit OperatorSet(newOperator);
     }
 
     /// @inheritdoc IYoPoolRegistry
