@@ -7,6 +7,7 @@ imports work without edits.
 | File                                                                 | Upstream path                                                            |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | `interfaces/IMidnight.sol`                                           | `src/interfaces/IMidnight.sol`                                           |
+| `libraries/IdLib.sol`                                                | `src/libraries/IdLib.sol`                                                |
 | `interfaces/IRatifier.sol`                                           | `src/interfaces/IRatifier.sol`                                           |
 | `ratifiers/libraries/HashLib.sol`                                    | `src/ratifiers/libraries/HashLib.sol`                                    |
 | `ratifiers/interfaces/ISetterRatifier.sol`                           | `src/ratifiers/interfaces/ISetterRatifier.sol`                           |

@@ -18,7 +18,7 @@ interface IYoMidnightAdapter {
     error InvalidMaker(uint256 index);
     error NotBuyOffer(uint256 index);
     error InvalidRatifier(uint256 index);
-    error TemplateNotAllowed(uint256 index, Id templateId);
+    error FamilyNotAllowed(uint256 index, Id familyId);
     error MaturityOutOfRange(uint256 index);
     error ExpiryAfterMaturity(uint256 index);
     error ContinuousFeeCapTooHigh(uint256 index);
@@ -63,6 +63,6 @@ interface IYoMidnightAdapter {
     /// @notice Burn `units` of the vault's credit in `market` and send the loan token to the vault.
     function redeem(Market calldata market, uint256 units) external;
 
-    /// @notice Registry key of `market` with its maturity cleared.
-    function templateId(Market calldata market) external pure returns (Id);
+    /// @notice Morpho market family id of `market`: the registry key that allows all its maturities.
+    function marketFamilyId(Market calldata market) external pure returns (Id);
 }

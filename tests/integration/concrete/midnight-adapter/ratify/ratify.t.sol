@@ -46,11 +46,11 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.InvalidRatifier.selector, 0));
     }
 
-    function test_WhenTemplateNotAllowlisted() external {
+    function test_WhenMarketFamilyNotAllowlisted() external {
         Offer memory offer = _offer();
         offer.market.collateralParams[0].oracle = makeAddr("AttackerOracle");
-        Id template = midnightAdapter.templateId(offer.market);
-        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.TemplateNotAllowed.selector, 0, template));
+        Id family = midnightAdapter.marketFamilyId(offer.market);
+        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.FamilyNotAllowed.selector, 0, family));
     }
 
     function test_WhenMaturityPassed() external {
@@ -133,7 +133,7 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         midnightAdapter.ratify(offers);
     }
 
-    function test_WhenOfferMaturityDiffersFromAllowlistedTemplateMaturity() external {
+    function test_WhenOfferMaturityDiffersFromAllowlistedFamilyMaturity() external {
         Offer memory offer = _offer();
         offer.market.maturity = block.timestamp + 45 days;
         offer.expiry = offer.market.maturity;
@@ -155,7 +155,7 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         assertTrue(mockRatifier.isRootRatified(users.vault, root), "ratified");
     }
 
-    function test_WhenOfferMaturityEqualsAllowlistedTemplateMaturity() external {
+    function test_WhenOfferMaturityEqualsAllowlistedFamilyMaturity() external {
         Offer[] memory offers = _offers(_offer(), 2);
         offers[1].tick = 6004;
         bytes32 expectedRoot = keccak256(abi.encode(HashLib.hashOffer(offers[0]), HashLib.hashOffer(offers[1])));

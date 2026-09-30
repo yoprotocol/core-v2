@@ -29,7 +29,8 @@ import { ChainId } from "./ChainId.sol";
 ///           - `Midnight.setIsAuthorized(adapter, true, vault)`.
 ///           - `callback.setAuthorization(adapter, true)`.
 ///           - `marketRegistry.setAllowed(vault, blueMarketId, true)` for each funding market, and
-///             `marketRegistry.setAllowed(vault, adapter.templateId(market), true)` for each template.
+///             `marketRegistry.setAllowed(vault, familyId, true)` for each Morpho market family
+///             (`adapter.marketFamilyId(market)`, the same as the Morpho API's `market_family_id`).
 ///           - `approvalRegistry.setApproval(vault, loanToken, adapter, cap)` then
 ///             `vault.approveToken(loanToken, adapter, cap)`.
 ///           - Grant the operator the adapter selectors only. Never grant the operator
@@ -38,7 +39,7 @@ import { ChainId } from "./ChainId.sol";
 ///
 ///         Required env vars:
 ///           - YO_REGISTRY:              live YoRegistry proxy (adapter `rescue` auth).
-///           - MORPHO_MARKET_REGISTRY:   live YoMorphoMarketRegistry (funding markets and templates).
+///           - MORPHO_MARKET_REGISTRY:   live YoMorphoMarketRegistry (funding markets and market families).
 ///         Optional env vars:
 ///           - MIDNIGHT_MAX_TIME_TO_MATURITY:  seconds; default 60 days.
 ///           - MIDNIGHT_MAX_CONTINUOUS_FEE_CAP: WAD per second, as Midnight's `continuousFee`; default 0.

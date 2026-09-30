@@ -14,6 +14,7 @@ import {
     IBlueBuyCallbackFactory
 } from "../../vendor/morpho-midnight/periphery/blue-buy-callback/interfaces/IBlueBuyCallbackFactory.sol";
 import { ISetterRatifier } from "../../vendor/morpho-midnight/ratifiers/interfaces/ISetterRatifier.sol";
+import { IdLib } from "../../vendor/morpho-midnight/libraries/IdLib.sol";
 import { HashLib } from "../../vendor/morpho-midnight/ratifiers/libraries/HashLib.sol";
 import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 
@@ -26,16 +27,17 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///           - `msg.sender` is the vault when invoked via `YoVault.manage(...)`.
 ///           - A callback is used only if `callbackFactory` created it and its `OWNER` is the vault.
 ///           - Funds that leave a callback or Midnight go only to the vault.
-///           - At ratify time, every leaf is a vault buy offer via `ratifier`, in an allowed template,
+///           - At ratify time, every leaf is a vault buy offer via `ratifier`, in an allowed market family,
 ///             with `expiry <= maturity <= now + maxTimeToMaturity` and `continuousFeeCap <=
 ///             maxContinuousFeeCap`, funded by the vault's callback from an allowed Blue market with
-///             the same loan token. Removing a template or market from `registry` does not revoke
+///             the same loan token. Removing a market family or market from `registry` does not revoke
 ///             roots already ratified: also `unratify` them (see `MidnightRootSet`), raise the
 ///             group's `consumed` on Midnight, or defund the callback.
 ///         REGISTRY: `registry` is the shared `YoMorphoMarketRegistry`. It holds Blue market ids
-///         (funding sources) and Midnight template ids (`templateId`). The key spaces do not
-///         collide: a template id hashes a domain tag plus a full `Market`, a Blue id hashes a
-///         `MarketParams`.
+///         (funding sources) and Morpho market family ids (`marketFamilyId`). A family is every
+///         market that differs only by maturity, so one entry allows all maturities. The key
+///         spaces do not collide: a family id is a CREATE2-style hash of a full `Market`, a Blue id
+///         hashes a `MarketParams`.
 ///         VAULT SETUP (governance): `Midnight.setIsAuthorized(ratifier, true, vault)`,
 ///         `Midnight.setIsAuthorized(adapter, true, vault)`, and `callback.setAuthorization(adapter,
 ///         true)`. The operator must not get direct `manage` access to `ratifier.setIsRootRatified`,
@@ -43,9 +45,6 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///         bypasses the offer checks in `ratify`.
 contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     using SafeERC20 for IERC20;
-
-    /// @notice Domain tag that separates template ids from Blue market ids in `registry`.
-    bytes32 public constant TEMPLATE_DOMAIN = keccak256("yo.midnight.template");
 
     /// @notice Callback funding audit log.
     /// @param  vault        The calling YO vault (always `msg.sender`).
@@ -254,10 +253,12 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IYoMidnightAdapter
-    function templateId(Market calldata market) public pure returns (Id) {
-        Market memory template = market;
-        template.maturity = 0;
-        return Id.wrap(keccak256(abi.encode(TEMPLATE_DOMAIN, template)));
+    /// @dev Matches Morpho's `market_family_id` (Morpho API and app): the Midnight id of the same
+    ///      market with `maturity = 0`.
+    function marketFamilyId(Market calldata market) public pure returns (Id) {
+        Market memory family = market;
+        family.maturity = 0;
+        return Id.wrap(IdLib.toId(family));
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -275,9 +276,9 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
             revert InvalidRatifier(index);
         }
 
-        Id template = templateId(offer.market);
-        if (!registry.isAllowed(vault, template)) {
-            revert TemplateNotAllowed(index, template);
+        Id family = marketFamilyId(offer.market);
+        if (!registry.isAllowed(vault, family)) {
+            revert FamilyNotAllowed(index, family);
         }
         uint256 maturity = offer.market.maturity;
         if (maturity <= block.timestamp || maturity - block.timestamp > maxTimeToMaturity) {

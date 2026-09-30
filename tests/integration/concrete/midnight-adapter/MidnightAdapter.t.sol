@@ -18,7 +18,7 @@ import {
 import { Integration_Test } from "../../Integration.t.sol";
 
 /// @notice Shared set-up for `YoMidnightAdapter` concrete tests: mock Midnight stack, one callback
-///         per vault, and an allowlisted funding market and template for `users.vault`.
+///         per vault, and an allowlisted funding market and market family for `users.vault`.
 abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test {
     uint256 internal constant MAX_TIME_TO_MATURITY = 60 days;
     uint256 internal constant MAX_CONTINUOUS_FEE_CAP = 1000;
@@ -70,7 +70,7 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         fundingId = Id.wrap(keccak256(abi.encode(fundingParams)));
         mockMorpho.setMarketParams(fundingId, fundingParams);
         _allowMarket(users.vault, fundingId);
-        _allowMarket(users.vault, midnightAdapter.templateId(_market(block.timestamp + TERM)));
+        _allowMarket(users.vault, midnightAdapter.marketFamilyId(_market(block.timestamp + TERM)));
 
         // Governance set-up for the vault.
         vm.startPrank(users.vault);
@@ -116,7 +116,7 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         market.maturity = maturity;
     }
 
-    /// @dev A valid `users.vault` lend bid in the default template.
+    /// @dev A valid `users.vault` lend bid in the default market family.
     function _offer() internal view returns (Offer memory offer) {
         offer.market = _market(block.timestamp + TERM);
         offer.buy = true;

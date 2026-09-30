@@ -10,8 +10,8 @@ Ratify_Integration_Concrete_Test
    │  └── it should revert with NotBuyOffer
    ├── when ratifier not setter ratifier
    │  └── it should revert with InvalidRatifier
-   ├── when template not allowlisted
-   │  └── it should revert with TemplateNotAllowed
+   ├── when market family not allowlisted
+   │  └── it should revert with FamilyNotAllowed
    ├── when maturity passed
    │  └── it should revert with MaturityOutOfRange
    ├── when maturity beyond max time to maturity
@@ -34,11 +34,11 @@ Ratify_Integration_Concrete_Test
       ├── given adapter not authorized on Midnight
       │  └── it should revert in the ratifier
       └── given adapter authorized on Midnight
-         ├── when offer maturity differs from allowlisted template maturity
+         ├── when offer maturity differs from allowlisted family maturity
          │  └── it should ratify the root
          ├── when maturity equals max time to maturity and expiry equals maturity
          │  └── it should ratify the root
-         └── when offer maturity equals allowlisted template maturity
+         └── when offer maturity equals allowlisted family maturity
             ├── it should ratify the Merkle root of the offers for the vault
             ├── it should return the root
             └── it should emit MidnightRootSet

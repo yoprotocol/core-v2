@@ -35,7 +35,7 @@ interface IBlueBuyCallbackAuth {
 ///         vault, shared `RolesAuthority`, registries, Morpho Blue, and Morpho Midnight:
 ///
 ///           1. Deploy `YoMidnightAdapter` with the production constructor arguments.
-///           2. Admin Safe: role-12 capabilities for the adapter, template allowlist, approval cap.
+///           2. Admin Safe: role-12 capabilities for the adapter, market-family allowlist, approval cap.
 ///           3. yoTest owner (TempAuthority swap, as in `Authorize_MorphoAdapter`): create the
 ///              callback and set the Midnight and Blue authorizations.
 ///           4. Operator (role 12, batch `manage`): approve, fund the callback, ratify one offer.
@@ -128,7 +128,7 @@ contract MidnightYoTestFork_Test is Test {
         for (uint256 i = 0; i < selectors.length; ++i) {
             AUTHORITY.setRoleCapability(OPERATOR_ROLE, address(adapter), selectors[i], true);
         }
-        MARKET_REGISTRY.setAllowed(address(YO_TEST), adapter.templateId(market), true);
+        MARKET_REGISTRY.setAllowed(address(YO_TEST), adapter.marketFamilyId(market), true);
         APPROVAL_REGISTRY.setApproval(address(YO_TEST), address(USDC), address(adapter), FUND_AMOUNT);
         vm.stopPrank();
 
@@ -226,6 +226,26 @@ contract MidnightYoTestFork_Test is Test {
         assertGt(USDC.balanceOf(address(YO_TEST)), vaultUsdcBefore, "yoTest earned yield");
         console2.log("yoTest USDC before:      ", vaultUsdcBefore);
         console2.log("yoTest USDC after:       ", USDC.balanceOf(address(YO_TEST)));
+    }
+
+    /// @dev The adapter's registry key equals Morpho's `market_family_id` (Morpho API) for the three
+    ///      families allowed for yoTest, so governance can allowlist the id that the Morpho app shows.
+    function testFork_YoTest_MarketFamilyIdMatchesMorpho() external view {
+        bytes32[3] memory marketIds = [
+            bytes32(0xeea94e3f7185bb8cfcdf41aca2c9776788e86d6c14de345b911b04f75cd49959), // USDC + cbBTC
+            bytes32(0x9da72291ae9be60ec8db98a17cd05f3f7d7317a34b167ba0874af168206c336f), // USDC + WETH
+            bytes32(0x7b30828284a7e638ef2b6662c9c424a2882cc0155d99d40218be3ef567a33f16) // wstETH + USDC
+        ];
+        bytes32[3] memory morphoFamilyIds = [
+            bytes32(0x92ddba8234595212f5b76d5b908690a05dfe2282d6e0af714fa9e73ac27b68e1),
+            bytes32(0x5ae4d97c74f34a5bbc39918f9b7677b69ebd0d021161efac02516a3d73e4432a),
+            bytes32(0x33af63c567bcd0c9bcb04c4ea386d00f1ff0b364d454a9fee826b66c25f9cfc8)
+        ];
+        for (uint256 i = 0; i < marketIds.length; ++i) {
+            assertEq(
+                Id.unwrap(adapter.marketFamilyId(MIDNIGHT.toMarket(marketIds[i]))), morphoFamilyIds[i], "family id"
+            );
+        }
     }
 
     function testFork_YoTest_OperatorCannotBypassRatify() external {

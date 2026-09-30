@@ -99,7 +99,7 @@ abstract contract MidnightFork_Test is Fork_Test {
 
         vm.startPrank(users.owner);
         marketRegistry.setAllowed(address(yoVault), fundingId, true);
-        marketRegistry.setAllowed(address(yoVault), adapter.templateId(market), true);
+        marketRegistry.setAllowed(address(yoVault), adapter.marketFamilyId(market), true);
         vm.stopPrank();
 
         // Governance set-up for the vault. The operator keeps no rights on these selectors.
