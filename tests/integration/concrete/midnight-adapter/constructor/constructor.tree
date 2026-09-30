@@ -1,0 +1,13 @@
+Constructor_Integration_Concrete_Test
+├── when registry zero
+│  └── it should revert with InvalidConfig
+├── when max time to maturity zero
+│  └── it should revert with InvalidConfig
+├── when ratifier points to another Midnight
+│  └── it should revert with InvalidConfig
+├── when callback factory points to another Midnight
+│  └── it should revert with InvalidConfig
+├── when callback factory points to another Blue
+│  └── it should revert with InvalidConfig
+└── when config consistent
+   └── it should set the immutables

@@ -24,6 +24,10 @@ sender = "0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38"
 solc = "0.8.34"
 src = "src"
 test = "tests"
+# Vendored Midnight `HashLib.hashOffer` hits "stack too deep" on the legacy pipeline. Compile it (and
+# its importers) with via_ir; everything else stays on the legacy pipeline.
+additional_compiler_profiles = [{ name = "via-ir", via_ir = true }]
+compilation_restrictions = [{ paths = "src/vendor/morpho-midnight/ratifiers/libraries/HashLib.sol", via_ir = true }]
 
 [profile.default.fuzz]
 max_test_rejects = 1_000_000
@@ -69,6 +73,7 @@ monad = { key = "${ETHERSCAN_API_KEY}", chain = "143", url = "https://api.ethers
 
 [fmt]
 bracket_spacing = true
+ignore = ["src/vendor/**"]
 int_types = "long"
 line_length = 120
 multiline_func_header = "all"

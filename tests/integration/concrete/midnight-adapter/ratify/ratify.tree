@@ -1,0 +1,44 @@
+Ratify_Integration_Concrete_Test
+├── when offers empty
+│  └── it should revert with LeafCountNotPowerOfTwo
+├── when offer count not power of two
+│  └── it should revert with LeafCountNotPowerOfTwo
+└── when offer count power of two
+   ├── when maker not vault
+   │  └── it should revert with InvalidMaker
+   ├── when offer is sell
+   │  └── it should revert with NotBuyOffer
+   ├── when ratifier not setter ratifier
+   │  └── it should revert with InvalidRatifier
+   ├── when market family not allowlisted
+   │  └── it should revert with FamilyNotAllowed
+   ├── when maturity passed
+   │  └── it should revert with MaturityOutOfRange
+   ├── when maturity beyond max time to maturity
+   │  └── it should revert with MaturityOutOfRange
+   ├── when expiry after maturity
+   │  └── it should revert with ExpiryAfterMaturity
+   ├── when continuous fee cap above max
+   │  └── it should revert with ContinuousFeeCapTooHigh
+   ├── when callback not created by factory
+   │  └── it should revert with OfferCallbackNotAllowed
+   ├── when callback not owned by vault
+   │  └── it should revert with OfferCallbackNotAllowed
+   ├── when funding market not allowlisted
+   │  └── it should revert with FundingMarketNotAllowed
+   ├── when funding loan token differs from market loan token
+   │  └── it should revert with LoanTokenMismatch
+   ├── when only a later leaf is invalid
+   │  └── it should revert with the index of that leaf
+   └── when all offers valid
+      ├── given adapter not authorized on Midnight
+      │  └── it should revert in the ratifier
+      └── given adapter authorized on Midnight
+         ├── when offer maturity differs from allowlisted family maturity
+         │  └── it should ratify the root
+         ├── when maturity equals max time to maturity and expiry equals maturity
+         │  └── it should ratify the root
+         └── when offer maturity equals allowlisted family maturity
+            ├── it should ratify the Merkle root of the offers for the vault
+            ├── it should return the root
+            └── it should emit MidnightRootSet

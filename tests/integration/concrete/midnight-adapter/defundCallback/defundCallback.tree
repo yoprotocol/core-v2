@@ -1,0 +1,19 @@
+DefundCallback_Integration_Concrete_Test
+├── when assets zero
+│  └── it should revert with InvalidAmount
+└── when assets non zero
+   ├── when callback owned by another vault
+   │  └── it should revert with InvalidCallback
+   └── when callback owned by vault
+      ├── given idToMarketParams returns zero loanToken
+      │  └── it should revert with UnknownMarket
+      └── given known market
+         ├── given callback has not authorized adapter on Morpho
+         │  └── it should revert in Morpho with not authorized
+         └── given callback authorized adapter
+            ├── given funding market removed from allowlist
+            │  └── it should still withdraw to vault
+            └── given funding market allowlisted
+               ├── it should withdraw from the callback position
+               ├── it should send assets to vault
+               └── it should emit MidnightCallbackAction

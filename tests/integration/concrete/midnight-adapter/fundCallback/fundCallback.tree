@@ -1,0 +1,24 @@
+FundCallback_Integration_Concrete_Test
+├── when assets zero
+│  └── it should revert with InvalidAmount
+└── when assets non zero
+   ├── when funding market not allowlisted for vault
+   │  └── it should revert with MarketNotAllowed
+   └── when funding market allowlisted
+      ├── when callback not created by factory
+      │  └── it should revert with InvalidCallback
+      ├── when callback owned by another vault
+      │  └── it should revert with InvalidCallback
+      └── when callback owned by vault
+         ├── given callback has not authorized adapter on Morpho
+         │  └── it should revert with CallbackNotAuthorized
+         ├── given idToMarketParams returns zero loanToken
+         │  └── it should revert with UnknownMarket
+         └── given known market
+            ├── given Morpho returns zero share delta
+            │  └── it should revert with NoShareDelta
+            └── given Morpho returns positive share delta
+               ├── it should pull assets from vault
+               ├── it should credit supply shares to the callback
+               ├── it should leave zero loan token and allowance in adapter
+               └── it should emit MidnightCallbackAction
