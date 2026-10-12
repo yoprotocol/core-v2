@@ -10,6 +10,11 @@ import { HashLib } from "src/vendor/morpho-midnight/ratifiers/libraries/HashLib.
 import { MidnightAdapter_Integration_Concrete_Test } from "../MidnightAdapter.t.sol";
 
 contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concrete_Test {
+    /// @dev About 3.5% per year over `TERM`: above `MIN_RATE`, below it after a 1% per year fee.
+    uint256 internal constant TICK_BELOW_MIN_RATE_NET_OF_FEE = 4544;
+    /// @dev About 2% per year to a 2-day maturity from now, about 4% per year from 1 day later.
+    uint256 internal constant TICK_ABOVE_MIN_RATE_FROM_START = 5200;
+
     function _expectRatifyRevert(Offer memory offer, bytes memory reason) internal {
         vm.prank(users.vault);
         vm.expectRevert(reason);
@@ -77,6 +82,22 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         Offer memory offer = _offer();
         offer.continuousFeeCap = MAX_CONTINUOUS_FEE_CAP + 1;
         _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.ContinuousFeeCapTooHigh.selector, 0));
+    }
+
+    function test_WhenPriceBelowMinRate() external {
+        Offer memory offer = _offer();
+        offer.tick = TICK_BELOW_MIN_RATE;
+        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.RateBelowMin.selector, 0));
+    }
+
+    function test_WhenContinuousFeeCapLowersNetRateBelowMinRate() external {
+        Offer memory offer = _offer();
+        offer.tick = TICK_BELOW_MIN_RATE_NET_OF_FEE;
+        vm.prank(users.vault);
+        midnightAdapter.ratify(_offers(offer, 1));
+
+        offer.continuousFeeCap = MAX_CONTINUOUS_FEE_CAP;
+        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.RateBelowMin.selector, 0));
     }
 
     function test_WhenCallbackNotCreatedByFactory() external {
@@ -155,9 +176,23 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         assertTrue(mockRatifier.isRootRatified(users.vault, root), "ratified");
     }
 
+    function test_WhenStartAfterNow() external {
+        Offer memory offer = _offer();
+        offer.market.maturity = block.timestamp + 2 days;
+        offer.expiry = offer.market.maturity;
+        offer.tick = TICK_ABOVE_MIN_RATE_FROM_START;
+        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.RateBelowMin.selector, 0));
+
+        offer.start = block.timestamp + 1 days;
+        vm.prank(users.vault);
+        bytes32 root = midnightAdapter.ratify(_offers(offer, 1));
+
+        assertTrue(mockRatifier.isRootRatified(users.vault, root), "ratified");
+    }
+
     function test_WhenOfferMaturityEqualsAllowlistedFamilyMaturity() external {
         Offer[] memory offers = _offers(_offer(), 2);
-        offers[1].tick = 6004;
+        offers[1].tick = TICK + 4;
         bytes32 expectedRoot = keccak256(abi.encode(HashLib.hashOffer(offers[0]), HashLib.hashOffer(offers[1])));
 
         vm.expectEmit(address(midnightAdapter));

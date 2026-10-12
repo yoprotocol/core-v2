@@ -74,7 +74,10 @@ contract MidnightYoTestFork_Test is Test {
 
     uint256 internal constant FUND_AMOUNT = 500e6;
     uint256 internal constant TAKE_UNITS = 200e6;
-    uint256 internal constant TICK = 6000;
+    /// @dev About 7.2% per year over the 30-day term, above `MIN_RATE`.
+    uint256 internal constant TICK = 4400;
+    /// @dev 3% per year.
+    uint256 internal constant MIN_RATE = 0.03e18 / uint256(365 days);
 
     YoMidnightAdapter internal adapter;
     address internal callback;
@@ -96,7 +99,9 @@ contract MidnightYoTestFork_Test is Test {
         fundingParams = MORPHO.idToMarketParams(FUNDING_MARKET);
 
         // 1. Deploy with the production constructor arguments (see Deploy_MidnightAdapter).
-        adapter = new YoMidnightAdapter(MORPHO, MIDNIGHT, RATIFIER, FACTORY, MARKET_REGISTRY, 60 days, 0, YO_REGISTRY);
+        adapter = new YoMidnightAdapter(
+            MORPHO, MIDNIGHT, RATIFIER, FACTORY, MARKET_REGISTRY, 60 days, 0, MIN_RATE, YO_REGISTRY
+        );
 
         // The Midnight market: cbBTC collateral priced by the funding market's Chainlink oracle.
         CollateralParams[] memory collaterals = new CollateralParams[](1);
@@ -194,6 +199,7 @@ contract MidnightYoTestFork_Test is Test {
 
         assertEq(MIDNIGHT.credit(marketId, address(YO_TEST)), TAKE_UNITS, "yoTest credit");
         assertLt(buyerAssets, TAKE_UNITS, "yoTest lent at a discount");
+        assertLe(buyerAssets * (1e18 + MIN_RATE * (market.maturity - block.timestamp)), TAKE_UNITS * 1e18, "min rate");
         assertEq(USDC.balanceOf(borrower), sellerAssets, "borrower received the loan");
         assertApproxEqAbs(callbackAssetsBefore - _callbackAssets(), buyerAssets, 1, "callback funded the fill");
         console2.log("Adapter:                 ", address(adapter));

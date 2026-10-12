@@ -40,10 +40,13 @@ import { ChainId } from "./ChainId.sol";
 ///         Required env vars:
 ///           - YO_REGISTRY:              live YoRegistry proxy (adapter `rescue` auth).
 ///           - MORPHO_MARKET_REGISTRY:   live YoMorphoMarketRegistry (funding markets and market families).
+///           - MIDNIGHT_MIN_RATE:        minimum offer rate net of fees, simple interest, WAD per second,
+///                                       as Midnight's `continuousFee`; nonzero. For example, 3% per
+///                                       year is `0.03e18 / 365 days` = 951293759.
 ///         Optional env vars:
-///           - MIDNIGHT_MAX_TIME_TO_MATURITY:  seconds; default 60 days.
-///           - MIDNIGHT_MAX_CONTINUOUS_FEE_CAP: WAD per second, as Midnight's `continuousFee`; default 0.
-///                                              Midnight's maximum is `0.01e18 / 365 days` (1% per year).
+///           - MIDNIGHT_MAX_TIME_TO_MATURITY:  seconds; default 60 days.///           -
+/// MIDNIGHT_MAX_CONTINUOUS_FEE_CAP: WAD per second, as Midnight's `continuousFee`; default 0. Midnight's maximum is
+/// `0.01e18 / 365 days` (1% per year).
 ///           - ETH_FROM, MNEMONIC:              broadcaster key (see {BaseScript}).
 contract Deploy_MidnightAdapter is BaseScript {
     uint256 internal constant DEFAULT_MAX_TIME_TO_MATURITY = 60 days;
@@ -55,6 +58,7 @@ contract Deploy_MidnightAdapter is BaseScript {
         uint256 maxTimeToMaturity =
             vm.envOr({ name: "MIDNIGHT_MAX_TIME_TO_MATURITY", defaultValue: DEFAULT_MAX_TIME_TO_MATURITY });
         uint256 maxContinuousFeeCap = vm.envOr({ name: "MIDNIGHT_MAX_CONTINUOUS_FEE_CAP", defaultValue: uint256(0) });
+        uint256 minRate = vm.envUint("MIDNIGHT_MIN_RATE");
 
         adapter = new YoMidnightAdapter{ salt: SALT }(
             IMorpho(getMorphoBlue()),
@@ -64,6 +68,7 @@ contract Deploy_MidnightAdapter is BaseScript {
             marketRegistry,
             maxTimeToMaturity,
             maxContinuousFeeCap,
+            minRate,
             yoRegistry
         );
 
@@ -113,6 +118,7 @@ contract Deploy_MidnightAdapter is BaseScript {
         console2.log("MorphoMarketRegistry:   ", address(adapter.registry()));
         console2.log("maxTimeToMaturity:      ", adapter.maxTimeToMaturity());
         console2.log("maxContinuousFeeCap:    ", adapter.maxContinuousFeeCap());
+        console2.log("minRate:                ", adapter.minRate());
         console2.log("YoRegistry (existing):  ", address(adapter.yoRegistry()));
     }
 }

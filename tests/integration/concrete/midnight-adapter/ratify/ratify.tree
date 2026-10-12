@@ -20,6 +20,10 @@ Ratify_Integration_Concrete_Test
    │  └── it should revert with ExpiryAfterMaturity
    ├── when continuous fee cap above max
    │  └── it should revert with ContinuousFeeCapTooHigh
+   ├── when price below min rate
+   │  └── it should revert with RateBelowMin
+   ├── when continuous fee cap lowers net rate below min rate
+   │  └── it should revert with RateBelowMin
    ├── when callback not created by factory
    │  └── it should revert with OfferCallbackNotAllowed
    ├── when callback not owned by vault
@@ -38,6 +42,8 @@ Ratify_Integration_Concrete_Test
          │  └── it should ratify the root
          ├── when maturity equals max time to maturity and expiry equals maturity
          │  └── it should ratify the root
+         ├── when start after now
+         │  └── it should measure the rate from start
          └── when offer maturity equals allowlisted family maturity
             ├── it should ratify the Merkle root of the offers for the vault
             ├── it should return the root

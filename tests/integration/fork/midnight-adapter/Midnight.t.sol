@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
 import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
+import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
 import { CollateralParams, IMidnight, Market, Offer } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
 import {
     IBlueBuyCallbackFactory
@@ -41,7 +42,12 @@ abstract contract MidnightFork_Test is Fork_Test {
     uint256 internal constant LLTV = 0.86e18;
     uint256 internal constant LIQUIDATION_CURSOR = 0.3e18;
     uint256 internal constant TERM = 30 days;
-    uint256 internal constant TICK = 6000;
+    /// @dev About 7.2% per year over `TERM`, above `MIN_RATE`.
+    uint256 internal constant TICK = 4400;
+    /// @dev About 2.7% per year over `TERM`, below `MIN_RATE`.
+    uint256 internal constant TICK_BELOW_MIN_RATE = 4600;
+    /// @dev 3% per year.
+    uint256 internal constant MIN_RATE = 0.03e18 / uint256(365 days);
     uint256 internal constant FUND_AMOUNT = 100_000e6;
     uint256 internal constant TAKE_UNITS = 10_000e6;
 
@@ -81,7 +87,7 @@ abstract contract MidnightFork_Test is Fork_Test {
         borrower = makeAddr("Borrower");
 
         adapter = new YoMidnightAdapter(
-            IMorpho(address(MORPHO)), midnight, ratifier, factory, marketRegistry, 60 days, 0, yoRegistry
+            IMorpho(address(MORPHO)), midnight, ratifier, factory, marketRegistry, 60 days, 0, MIN_RATE, yoRegistry
         );
         callback = factory.createBlueBuyCallback(address(yoVault), bytes32(0));
         vm.label(address(adapter), "YoMidnightAdapter");
@@ -151,6 +157,7 @@ abstract contract MidnightFork_Test is Fork_Test {
 
         assertEq(midnight.credit(marketId, address(yoVault)), TAKE_UNITS, "vault credit");
         assertLt(buyerAssets, TAKE_UNITS, "bought at a discount");
+        assertLe(buyerAssets * (1e18 + MIN_RATE * (market.maturity - block.timestamp)), TAKE_UNITS * 1e18, "min rate");
         assertApproxEqAbs(callbackBlueBefore - _callbackBlueAssets(), buyerAssets, 1, "callback funded the fill");
 
         // After maturity the borrower repays and the vault redeems its credit.
@@ -185,6 +192,17 @@ abstract contract MidnightFork_Test is Fork_Test {
         assertFalse(ratifier.isRootRatified(address(yoVault), root), "root cleared");
         vm.expectRevert();
         ratifier.isRatified(offers[0], abi.encode(root, uint256(0), new bytes32[](0)), borrower);
+    }
+
+    function testFork_Midnight_RatifyRejectsRateBelowMin() external {
+        Offer[] memory offers = new Offer[](1);
+        offers[0] = _offer(TICK_BELOW_MIN_RATE);
+        bytes memory data = abi.encodeCall(YoMidnightAdapter.ratify, (offers));
+        authority.setAllowed(users.operator, address(adapter), bytes4(data), true);
+
+        vm.prank(users.operator);
+        vm.expectRevert(abi.encodeWithSelector(IYoMidnightAdapter.RateBelowMin.selector, 0));
+        yoVault.manage(address(adapter), data, 0);
     }
 
     /// @dev Run one set-up call through `manage`, then revoke the operator's right on that selector.

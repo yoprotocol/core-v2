@@ -15,6 +15,7 @@ import {
 } from "../../vendor/morpho-midnight/periphery/blue-buy-callback/interfaces/IBlueBuyCallbackFactory.sol";
 import { ISetterRatifier } from "../../vendor/morpho-midnight/ratifiers/interfaces/ISetterRatifier.sol";
 import { IdLib } from "../../vendor/morpho-midnight/libraries/IdLib.sol";
+import { TickLib } from "../../vendor/morpho-midnight/libraries/TickLib.sol";
 import { HashLib } from "../../vendor/morpho-midnight/ratifiers/libraries/HashLib.sol";
 import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 
@@ -28,11 +29,22 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///           - A callback is used only if `callbackFactory` created it and its `OWNER` is the vault.
 ///           - Funds that leave a callback or Midnight go only to the vault.
 ///           - At ratify time, every leaf is a vault buy offer via `ratifier`, in an allowed market family,
-///             with `expiry <= maturity <= now + maxTimeToMaturity` and `continuousFeeCap <=
-///             maxContinuousFeeCap`, funded by the vault's callback from an allowed Blue market with
-///             the same loan token. Removing a market family or market from `registry` does not revoke
-///             roots already ratified: also `unratify` them (see `MidnightRootSet`), raise the
-///             group's `consumed` on Midnight, or defund the callback.
+///             with `expiry <= maturity <= now + maxTimeToMaturity`, `continuousFeeCap <=
+///             maxContinuousFeeCap`, and a price that earns at least `minRate` net of
+///             `continuousFeeCap`. The vault's callback funds it from an allowed Blue market with the
+///             same loan token.
+///         REVOCATION: the ratifier checks only the Merkle proof and the root, so removing a market
+///         family or market from `registry` does not revoke roots already ratified. To revoke a
+///         root, `unratify` it (see `MidnightRootSet`), raise the group's `consumed` on Midnight, or
+///         remove its funding market from `registry` and defund the callback. Defunding alone is
+///         not enough: the next `fundCallback` on the same callback and market makes the root
+///         fillable again. Roots stay live until `expiry`, also after the operator loses its role.
+///         `Midnight.setIsAuthorized(ratifier, false, vault)` stops every bid of the vault at once.
+///         TAKER RISK: the taker of a vault bid is the seller, and Midnight books the units against
+///         the seller's credit first. So a lender in the market can sell its credit to the vault,
+///         also credit with bad debt that is not yet realized. The ratifier does not check the
+///         taker, so the adapter cannot block this. Quote with a short `expiry`, and `unratify`
+///         the bids of a market whose collateral price falls.
 ///         REGISTRY: `registry` is the shared `YoMorphoMarketRegistry`. It holds Blue market ids
 ///         (funding sources) and Morpho market family ids (`marketFamilyId`). A family is every
 ///         market that differs only by maturity, so one entry allows all maturities. The key
@@ -63,6 +75,8 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     /// @notice Emitted when the vault ratifies (`offerCount > 0`) or revokes (`offerCount == 0`) a root.
     event MidnightRootSet(address indexed vault, bytes32 indexed root, bool ratified, uint256 offerCount);
 
+    uint256 internal constant WAD = 1e18;
+
     IMorpho public immutable morpho;
     IMidnight public immutable midnight;
     ISetterRatifier public immutable ratifier;
@@ -72,6 +86,10 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     uint256 public immutable maxTimeToMaturity;
     /// @notice Upper bound on `continuousFeeCap` for ratified offers, in Midnight's continuous-fee units.
     uint256 public immutable maxContinuousFeeCap;
+    /// @notice Lower bound on the rate of ratified offers: simple interest, WAD per second, as
+    ///         Midnight's `continuousFee`. The rate is net of the offer's `continuousFeeCap` and
+    ///         counts from the earliest take time to maturity.
+    uint256 public immutable minRate;
 
     constructor(
         IMorpho _morpho,
@@ -81,13 +99,15 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         IYoMorphoMarketRegistry _registry,
         uint256 _maxTimeToMaturity,
         uint256 _maxContinuousFeeCap,
+        uint256 _minRate,
         IYoRegistry _yoRegistry
     )
         YoAdapterBase(_yoRegistry)
     {
         if (
-            address(_registry) == address(0) || _maxTimeToMaturity == 0 || _ratifier.MIDNIGHT() != address(_midnight)
-                || _callbackFactory.MIDNIGHT() != address(_midnight) || _callbackFactory.BLUE() != address(_morpho)
+            address(_registry) == address(0) || _maxTimeToMaturity == 0 || _minRate == 0
+                || _ratifier.MIDNIGHT() != address(_midnight) || _callbackFactory.MIDNIGHT() != address(_midnight)
+                || _callbackFactory.BLUE() != address(_morpho)
         ) {
             revert InvalidConfig();
         }
@@ -98,6 +118,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         registry = _registry;
         maxTimeToMaturity = _maxTimeToMaturity;
         maxContinuousFeeCap = _maxContinuousFeeCap;
+        minRate = _minRate;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -290,6 +311,24 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         if (offer.continuousFeeCap > maxContinuousFeeCap) {
             revert ContinuousFeeCapTooHigh(index);
         }
+        if (!_meetsMinRate(offer)) {
+            revert RateBelowMin(index);
+        }
+    }
+
+    /// @dev The vault pays `price` per unit at the take and gets 1 per unit at maturity, less the
+    ///      continuous fee (at most `continuousFeeCap * timeToMaturity` per unit). The price does
+    ///      not change with time, so the rate is lowest at the earliest take: `max(now, start)`.
+    ///      Requires `(1 - fee) >= price * (1 + minRate * timeToMaturity)`, in WAD.
+    function _meetsMinRate(Offer calldata offer) internal view returns (bool) {
+        uint256 earliestTake = offer.start > block.timestamp ? offer.start : block.timestamp;
+        uint256 maturity = offer.market.maturity;
+        uint256 timeToMaturity = maturity > earliestTake ? maturity - earliestTake : 0;
+        uint256 fee = offer.continuousFeeCap * timeToMaturity;
+        if (fee >= WAD) {
+            return false;
+        }
+        return TickLib.tickToPrice(offer.tick) * (WAD + minRate * timeToMaturity) <= (WAD - fee) * WAD;
     }
 
     function _validateFunding(address vault, Offer calldata offer, uint256 index) internal view {

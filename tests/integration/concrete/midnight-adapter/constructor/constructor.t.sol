@@ -25,6 +25,7 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             IYoMorphoMarketRegistry(address(0)),
             MAX_TIME_TO_MATURITY,
             MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
             yoRegistry
         );
     }
@@ -39,6 +40,22 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             marketRegistry,
             0,
             MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
+            yoRegistry
+        );
+    }
+
+    function test_WhenMinRateZero() external {
+        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
+        new YoMidnightAdapter(
+            IMorpho(address(mockMorpho)),
+            IMidnight(address(mockMidnight)),
+            ISetterRatifier(address(mockRatifier)),
+            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
+            marketRegistry,
+            MAX_TIME_TO_MATURITY,
+            MAX_CONTINUOUS_FEE_CAP,
+            0,
             yoRegistry
         );
     }
@@ -86,6 +103,7 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
         assertEq(address(midnightAdapter.registry()), address(marketRegistry), "registry");
         assertEq(midnightAdapter.maxTimeToMaturity(), MAX_TIME_TO_MATURITY, "maxTimeToMaturity");
         assertEq(midnightAdapter.maxContinuousFeeCap(), MAX_CONTINUOUS_FEE_CAP, "maxContinuousFeeCap");
+        assertEq(midnightAdapter.minRate(), MIN_RATE, "minRate");
         assertEq(address(midnightAdapter.yoRegistry()), address(yoRegistry), "yoRegistry");
     }
 }

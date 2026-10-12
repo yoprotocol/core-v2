@@ -21,8 +21,15 @@ import { Integration_Test } from "../../Integration.t.sol";
 ///         per vault, and an allowlisted funding market and market family for `users.vault`.
 abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test {
     uint256 internal constant MAX_TIME_TO_MATURITY = 60 days;
-    uint256 internal constant MAX_CONTINUOUS_FEE_CAP = 1000;
+    /// @dev Midnight's `MAX_CONTINUOUS_FEE`: 1% per year.
+    uint256 internal constant MAX_CONTINUOUS_FEE_CAP = 0.01e18 / uint256(365 days);
+    /// @dev 3% per year.
+    uint256 internal constant MIN_RATE = 0.03e18 / uint256(365 days);
     uint256 internal constant TERM = 30 days;
+    /// @dev About 7.2% per year over `TERM`.
+    uint256 internal constant TICK = 4400;
+    /// @dev About 2.7% per year over `TERM`, below `MIN_RATE`.
+    uint256 internal constant TICK_BELOW_MIN_RATE = 4600;
     uint256 internal constant FUND_AMOUNT = 10_000e6;
 
     MockMidnight internal mockMidnight;
@@ -98,6 +105,7 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
             marketRegistry,
             MAX_TIME_TO_MATURITY,
             MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
             yoRegistry
         );
     }
@@ -122,7 +130,7 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         offer.buy = true;
         offer.maker = users.vault;
         offer.expiry = offer.market.maturity;
-        offer.tick = 6000;
+        offer.tick = TICK;
         offer.group = keccak256("GROUP");
         offer.callback = callback;
         offer.callbackData = abi.encode(fundingParams);
