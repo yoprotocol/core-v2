@@ -22,6 +22,7 @@ interface IYoMidnightAdapter {
     error MaturityOutOfRange(uint256 index);
     error ExpiryAfterMaturity(uint256 index);
     error ContinuousFeeCapTooHigh(uint256 index);
+    error RateBelowMin(uint256 index);
     error OfferCallbackNotAllowed(uint256 index, address callback);
     error FundingMarketNotAllowed(uint256 index, Id blueMarketId);
     error LoanTokenMismatch(uint256 index);
