@@ -15,10 +15,18 @@ FundCallback_Integration_Concrete_Test
          ├── given idToMarketParams returns zero loanToken
          │  └── it should revert with UnknownMarket
          └── given known market
-            ├── given Morpho returns zero share delta
-            │  └── it should revert with NoShareDelta
-            └── given Morpho returns positive share delta
-               ├── it should pull assets from vault
-               ├── it should credit supply shares to the callback
-               ├── it should leave zero loan token and allowance in adapter
-               └── it should emit MidnightCallbackAction
+            ├── when loan token not vault asset
+            │  └── it should revert with LoanTokenNotVaultAsset
+            ├── when funding exceeds exposure cap
+            │  └── it should revert with ExposureCapExceeded
+            └── when funding within exposure cap
+               ├── when funding reaches exposure cap exactly
+               │  └── it should fund
+               ├── given Morpho returns zero share delta
+               │  └── it should revert with NoShareDelta
+               └── given Morpho returns positive share delta
+                  ├── it should pull assets from vault
+                  ├── it should credit supply shares to the callback
+                  ├── it should add assets to deployedAssets
+                  ├── it should leave zero loan token and allowance in adapter
+                  └── it should emit MidnightCallbackAction

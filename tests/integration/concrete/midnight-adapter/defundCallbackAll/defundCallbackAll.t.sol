@@ -23,6 +23,22 @@ contract DefundCallbackAll_Integration_Concrete_Test is MidnightAdapter_Integrat
         midnightAdapter.defundCallbackAll(callback, fundingId);
     }
 
+    function test_GivenWithdrawnAssetsExceedDeployedAssets() external {
+        // A donor adds to the callback position, so the vault gets back more than it funded.
+        _fundCallback(FUND_AMOUNT);
+        usdc.mint(users.eve, FUND_AMOUNT);
+        vm.startPrank(users.eve);
+        usdc.approve(address(mockMorpho), FUND_AMOUNT);
+        mockMorpho.supply(fundingParams, FUND_AMOUNT, 0, callback, "");
+        vm.stopPrank();
+
+        vm.prank(users.vault);
+        (uint256 assetsWithdrawn,) = midnightAdapter.defundCallbackAll(callback, fundingId);
+
+        assertEq(assetsWithdrawn, 2 * FUND_AMOUNT, "assetsWithdrawn");
+        assertEq(midnightAdapter.deployedAssets(users.vault), 0, "deployedAssets");
+    }
+
     function test_GivenCallbackHasSupplyPosition() external {
         _fundCallback(FUND_AMOUNT);
         uint256 vaultBefore = usdc.balanceOf(users.vault);
@@ -34,5 +50,6 @@ contract DefundCallbackAll_Integration_Concrete_Test is MidnightAdapter_Integrat
         assertEq(sharesBurned, FUND_AMOUNT, "sharesBurned");
         assertEq(mockMorpho.position(fundingId, callback).supplyShares, 0, "callback shares");
         assertEq(usdc.balanceOf(users.vault), vaultBefore + FUND_AMOUNT, "vault USDC delta");
+        assertEq(midnightAdapter.deployedAssets(users.vault), 0, "deployedAssets");
     }
 }

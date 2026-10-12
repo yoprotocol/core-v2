@@ -5,6 +5,10 @@ Constructor_Integration_Concrete_Test
 │  └── it should revert with InvalidConfig
 ├── when min rate zero
 │  └── it should revert with InvalidConfig
+├── when max exposure bps zero
+│  └── it should revert with InvalidConfig
+├── when max exposure bps above 10000
+│  └── it should revert with InvalidConfig
 ├── when ratifier points to another Midnight
 │  └── it should revert with InvalidConfig
 ├── when callback factory points to another Midnight

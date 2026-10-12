@@ -27,6 +27,8 @@ interface IYoMidnightAdapter {
     error FundingMarketNotAllowed(uint256 index, Id blueMarketId);
     error LoanTokenMismatch(uint256 index);
     error LeafCountNotPowerOfTwo(uint256 count);
+    error LoanTokenNotVaultAsset(address loanToken);
+    error ExposureCapExceeded(uint256 deployed, uint256 cap);
 
     /// @notice Supply `assets` of the vault's loan token to Blue market `blueMarketId` on behalf of
     ///         the vault's `callback`.
@@ -63,6 +65,10 @@ interface IYoMidnightAdapter {
 
     /// @notice Burn `units` of the vault's credit in `market` and send the loan token to the vault.
     function redeem(Market calldata market, uint256 units) external;
+
+    /// @notice Net assets that the vault sent to Midnight lending: funded, less defunded and
+    ///         redeemed, in the vault's asset, floored at 0.
+    function deployedAssets(address vault) external view returns (uint256 assets);
 
     /// @notice Morpho market family id of `market`: the registry key that allows all its maturities.
     function marketFamilyId(Market calldata market) external pure returns (Id);

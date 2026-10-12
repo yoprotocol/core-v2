@@ -50,6 +50,10 @@ abstract contract MidnightFork_Test is Fork_Test {
     uint256 internal constant MIN_RATE = 0.03e18 / uint256(365 days);
     uint256 internal constant FUND_AMOUNT = 100_000e6;
     uint256 internal constant TAKE_UNITS = 10_000e6;
+    /// @dev The vault's `totalAssets()` at the mocked 1:1 NAV.
+    uint256 internal constant VAULT_TOTAL_ASSETS = 500_000e6;
+    /// @dev 20% of `VAULT_TOTAL_ASSETS`, which is exactly `FUND_AMOUNT`.
+    uint256 internal constant MAX_EXPOSURE_BPS = 2000;
 
     IMidnight internal midnight;
     ISetterRatifier internal ratifier;
@@ -87,7 +91,16 @@ abstract contract MidnightFork_Test is Fork_Test {
         borrower = makeAddr("Borrower");
 
         adapter = new YoMidnightAdapter(
-            IMorpho(address(MORPHO)), midnight, ratifier, factory, marketRegistry, 60 days, 0, MIN_RATE, yoRegistry
+            IMorpho(address(MORPHO)),
+            midnight,
+            ratifier,
+            factory,
+            marketRegistry,
+            60 days,
+            0,
+            MIN_RATE,
+            MAX_EXPOSURE_BPS,
+            yoRegistry
         );
         callback = factory.createBlueBuyCallback(address(yoVault), bytes32(0));
         vm.label(address(adapter), "YoMidnightAdapter");
@@ -120,7 +133,20 @@ abstract contract MidnightFork_Test is Fork_Test {
         _governanceManage(callback, authorizeAdapter);
         _vaultApprove(usdc, address(adapter), FUND_AMOUNT);
 
+        // Shares held elsewhere give the vault its `totalAssets()`; only `FUND_AMOUNT` is idle.
+        deal(address(yoVault), makeAddr("Depositor"), VAULT_TOTAL_ASSETS, true);
         deal(address(usdc), address(yoVault), FUND_AMOUNT);
+    }
+
+    function testFork_Midnight_FundAboveExposureCapReverts() external {
+        bytes memory data = abi.encodeCall(YoMidnightAdapter.fundCallback, (callback, fundingId, FUND_AMOUNT + 1));
+        authority.setAllowed(users.operator, address(adapter), bytes4(data), true);
+
+        vm.prank(users.operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(IYoMidnightAdapter.ExposureCapExceeded.selector, FUND_AMOUNT + 1, FUND_AMOUNT)
+        );
+        yoVault.manage(address(adapter), data, 0);
     }
 
     function testFork_Midnight_FundRatifyTakeRedeem() external {
@@ -129,6 +155,7 @@ abstract contract MidnightFork_Test is Fork_Test {
         assertEq(usdc.balanceOf(address(yoVault)), 0, "vault funded the callback");
         assertGt(MORPHO.position(fundingId, callback).supplyShares, 0, "callback Blue position");
         assertEq(MORPHO.position(fundingId, address(yoVault)).supplyShares, 0, "no vault Blue position");
+        assertEq(adapter.deployedAssets(address(yoVault)), FUND_AMOUNT, "deployed after fund");
 
         // Ratify a two-offer tree.
         Offer[] memory offers = new Offer[](2);
@@ -159,6 +186,7 @@ abstract contract MidnightFork_Test is Fork_Test {
         assertLt(buyerAssets, TAKE_UNITS, "bought at a discount");
         assertLe(buyerAssets * (1e18 + MIN_RATE * (market.maturity - block.timestamp)), TAKE_UNITS * 1e18, "min rate");
         assertApproxEqAbs(callbackBlueBefore - _callbackBlueAssets(), buyerAssets, 1, "callback funded the fill");
+        assertEq(adapter.deployedAssets(address(yoVault)), FUND_AMOUNT, "a fill does not change deployed");
 
         // After maturity the borrower repays and the vault redeems its credit.
         vm.warp(market.maturity + 1);
@@ -171,10 +199,12 @@ abstract contract MidnightFork_Test is Fork_Test {
         _opManage(address(adapter), abi.encodeCall(YoMidnightAdapter.redeem, (market, TAKE_UNITS)));
         assertEq(midnight.credit(marketId, address(yoVault)), 0, "credit redeemed");
         assertEq(usdc.balanceOf(address(yoVault)), TAKE_UNITS, "vault received face value");
+        assertEq(adapter.deployedAssets(address(yoVault)), FUND_AMOUNT - TAKE_UNITS, "deployed after redeem");
 
         // Pull the rest of the callback position back to the vault.
         _opManage(address(adapter), abi.encodeCall(YoMidnightAdapter.defundCallbackAll, (callback, fundingId)));
         assertEq(MORPHO.position(fundingId, callback).supplyShares, 0, "callback position closed");
+        assertEq(adapter.deployedAssets(address(yoVault)), 0, "deployed after defund");
         assertGe(
             usdc.balanceOf(address(yoVault)), FUND_AMOUNT - buyerAssets + TAKE_UNITS - 1, "vault made the discount"
         );

@@ -5,6 +5,7 @@ import { stdError } from "forge-std/src/StdError.sol";
 
 import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
 import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
+import { Market } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
 
 import { MidnightAdapter_Integration_Concrete_Test } from "../MidnightAdapter.t.sol";
 
@@ -34,7 +35,22 @@ contract Redeem_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         midnightAdapter.redeem(_market(block.timestamp + TERM), CREDIT + 1);
     }
 
-    function test_GivenUnitsWithinVaultCredit() external whenCallerVault {
+    function test_GivenLoanTokenNotVaultAsset() external {
+        _fundCallback(FUND_AMOUNT);
+        Market memory market = _market(block.timestamp + TERM);
+        market.loanToken = address(usdt);
+        mockMidnight.setCredit(users.vault, address(usdt), CREDIT);
+        usdt.mint(address(mockMidnight), CREDIT);
+
+        vm.prank(users.vault);
+        midnightAdapter.redeem(market, CREDIT);
+
+        assertEq(midnightAdapter.deployedAssets(users.vault), FUND_AMOUNT, "deployedAssets");
+    }
+
+    function test_GivenUnitsWithinVaultCredit() external {
+        _fundCallback(FUND_AMOUNT);
+        vm.startPrank(users.vault);
         uint256 vaultBefore = usdc.balanceOf(users.vault);
 
         vm.expectEmit(address(midnightAdapter));
@@ -50,5 +66,7 @@ contract Redeem_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
 
         assertEq(mockMidnight.credit(users.vault, address(usdc)), 0, "credit");
         assertEq(usdc.balanceOf(users.vault), vaultBefore + CREDIT, "vault USDC delta");
+        assertEq(midnightAdapter.deployedAssets(users.vault), FUND_AMOUNT - CREDIT, "deployedAssets");
+        vm.stopPrank();
     }
 }

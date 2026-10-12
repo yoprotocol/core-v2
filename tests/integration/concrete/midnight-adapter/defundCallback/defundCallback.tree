@@ -11,9 +11,12 @@ DefundCallback_Integration_Concrete_Test
          ├── given callback has not authorized adapter on Morpho
          │  └── it should revert in Morpho with not authorized
          └── given callback authorized adapter
+            ├── given loan token not vault asset
+            │  └── it should keep deployedAssets
             ├── given funding market removed from allowlist
             │  └── it should still withdraw to vault
             └── given funding market allowlisted
                ├── it should withdraw from the callback position
                ├── it should send assets to vault
+               ├── it should subtract assets from deployedAssets
                └── it should emit MidnightCallbackAction

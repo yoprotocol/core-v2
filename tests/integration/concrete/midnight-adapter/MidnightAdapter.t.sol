@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
 import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
 import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
 import { CollateralParams, IMidnight, Market, Offer } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
@@ -31,6 +33,11 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
     /// @dev About 2.7% per year over `TERM`, below `MIN_RATE`.
     uint256 internal constant TICK_BELOW_MIN_RATE = 4600;
     uint256 internal constant FUND_AMOUNT = 10_000e6;
+    /// @dev `users.vault`'s `totalAssets()`, in USDC.
+    uint256 internal constant TOTAL_ASSETS = 100_000e6;
+    /// @dev 20% of `TOTAL_ASSETS`: 20_000e6, twice `FUND_AMOUNT`.
+    uint256 internal constant MAX_EXPOSURE_BPS = 2000;
+    uint256 internal constant CAP = TOTAL_ASSETS * MAX_EXPOSURE_BPS / 10_000;
 
     MockMidnight internal mockMidnight;
     MockSetterRatifier internal mockRatifier;
@@ -79,6 +86,10 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         _allowMarket(users.vault, fundingId);
         _allowMarket(users.vault, midnightAdapter.marketFamilyId(_market(block.timestamp + TERM)));
 
+        // `users.vault` stands in for a USDC YoVault.
+        vm.mockCall(users.vault, abi.encodeCall(IERC4626.asset, ()), abi.encode(address(usdc)));
+        _setVaultTotalAssets(TOTAL_ASSETS);
+
         // Governance set-up for the vault.
         vm.startPrank(users.vault);
         usdc.approve(address(midnightAdapter), type(uint256).max);
@@ -86,6 +97,10 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         mockMidnight.setIsAuthorized(address(midnightAdapter), true, users.vault);
         MockBlueBuyCallback(callback).setAuthorization(address(midnightAdapter), true);
         vm.stopPrank();
+    }
+
+    function _setVaultTotalAssets(uint256 totalAssets) internal {
+        vm.mockCall(users.vault, abi.encodeCall(IERC4626.totalAssets, ()), abi.encode(totalAssets));
     }
 
     function _deployAdapter(
@@ -106,6 +121,7 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
             MAX_TIME_TO_MATURITY,
             MAX_CONTINUOUS_FEE_CAP,
             MIN_RATE,
+            MAX_EXPOSURE_BPS,
             yoRegistry
         );
     }

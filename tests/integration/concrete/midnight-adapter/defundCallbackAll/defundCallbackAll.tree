@@ -7,6 +7,9 @@ DefundCallbackAll_Integration_Concrete_Test
    └── given known market
       ├── given callback has no supply position
       │  └── it should revert with NoPosition
+      ├── given withdrawn assets exceed deployedAssets
+      │  └── it should floor deployedAssets at zero
       └── given callback has supply position
          ├── it should withdraw all callback shares
-         └── it should send assets to vault
+         ├── it should send assets to vault
+         └── it should subtract assets from deployedAssets

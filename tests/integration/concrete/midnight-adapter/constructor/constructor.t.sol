@@ -26,6 +26,7 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             MAX_TIME_TO_MATURITY,
             MAX_CONTINUOUS_FEE_CAP,
             MIN_RATE,
+            MAX_EXPOSURE_BPS,
             yoRegistry
         );
     }
@@ -41,6 +42,7 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             0,
             MAX_CONTINUOUS_FEE_CAP,
             MIN_RATE,
+            MAX_EXPOSURE_BPS,
             yoRegistry
         );
     }
@@ -56,6 +58,39 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             MAX_TIME_TO_MATURITY,
             MAX_CONTINUOUS_FEE_CAP,
             0,
+            MAX_EXPOSURE_BPS,
+            yoRegistry
+        );
+    }
+
+    function test_WhenMaxExposureBpsZero() external {
+        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
+        new YoMidnightAdapter(
+            IMorpho(address(mockMorpho)),
+            IMidnight(address(mockMidnight)),
+            ISetterRatifier(address(mockRatifier)),
+            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
+            marketRegistry,
+            MAX_TIME_TO_MATURITY,
+            MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
+            0,
+            yoRegistry
+        );
+    }
+
+    function test_WhenMaxExposureBpsAbove10000() external {
+        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
+        new YoMidnightAdapter(
+            IMorpho(address(mockMorpho)),
+            IMidnight(address(mockMidnight)),
+            ISetterRatifier(address(mockRatifier)),
+            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
+            marketRegistry,
+            MAX_TIME_TO_MATURITY,
+            MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
+            10_001,
             yoRegistry
         );
     }
@@ -104,6 +139,7 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
         assertEq(midnightAdapter.maxTimeToMaturity(), MAX_TIME_TO_MATURITY, "maxTimeToMaturity");
         assertEq(midnightAdapter.maxContinuousFeeCap(), MAX_CONTINUOUS_FEE_CAP, "maxContinuousFeeCap");
         assertEq(midnightAdapter.minRate(), MIN_RATE, "minRate");
+        assertEq(midnightAdapter.maxExposureBps(), MAX_EXPOSURE_BPS, "maxExposureBps");
         assertEq(address(midnightAdapter.yoRegistry()), address(yoRegistry), "yoRegistry");
     }
 }

@@ -33,9 +33,9 @@ import { ChainId } from "./ChainId.sol";
 ///             (`adapter.marketFamilyId(market)`, the same as the Morpho API's `market_family_id`).
 ///           - `approvalRegistry.setApproval(vault, loanToken, adapter, cap)` then
 ///             `vault.approveToken(loanToken, adapter, cap)`.
-///           - Grant the operator the adapter selectors only. Never grant the operator
-///             `Midnight.setIsAuthorized`, `Midnight.take`, `ratifier.setIsRootRatified`, or
-///             `callback.setAuthorization`.
+///           - Grant the operator the adapter selectors only.
+///             Never grant the operator `Midnight.setIsAuthorized`, `Midnight.take`,
+///             `ratifier.setIsRootRatified`, or `callback.setAuthorization`.
 ///
 ///         Required env vars:
 ///           - YO_REGISTRY:              live YoRegistry proxy (adapter `rescue` auth).
@@ -43,10 +43,12 @@ import { ChainId } from "./ChainId.sol";
 ///           - MIDNIGHT_MIN_RATE:        minimum offer rate net of fees, simple interest, WAD per second,
 ///                                       as Midnight's `continuousFee`; nonzero. For example, 3% per
 ///                                       year is `0.03e18 / 365 days` = 951293759.
+///           - MIDNIGHT_MAX_EXPOSURE_BPS: cap on each vault's assets in Midnight lending, in bps of its
+///                                       `totalAssets()`; 1 to 10_000. For example, 2000 = 20%.
 ///         Optional env vars:
-///           - MIDNIGHT_MAX_TIME_TO_MATURITY:  seconds; default 60 days.///           -
-/// MIDNIGHT_MAX_CONTINUOUS_FEE_CAP: WAD per second, as Midnight's `continuousFee`; default 0. Midnight's maximum is
-/// `0.01e18 / 365 days` (1% per year).
+///           - MIDNIGHT_MAX_TIME_TO_MATURITY:   seconds; default 60 days.
+///           - MIDNIGHT_MAX_CONTINUOUS_FEE_CAP: WAD per second, as Midnight's `continuousFee`; default 0.
+///                                              Midnight's maximum is `0.01e18 / 365 days` (1% per year).
 ///           - ETH_FROM, MNEMONIC:              broadcaster key (see {BaseScript}).
 contract Deploy_MidnightAdapter is BaseScript {
     uint256 internal constant DEFAULT_MAX_TIME_TO_MATURITY = 60 days;
@@ -59,6 +61,7 @@ contract Deploy_MidnightAdapter is BaseScript {
             vm.envOr({ name: "MIDNIGHT_MAX_TIME_TO_MATURITY", defaultValue: DEFAULT_MAX_TIME_TO_MATURITY });
         uint256 maxContinuousFeeCap = vm.envOr({ name: "MIDNIGHT_MAX_CONTINUOUS_FEE_CAP", defaultValue: uint256(0) });
         uint256 minRate = vm.envUint("MIDNIGHT_MIN_RATE");
+        uint256 maxExposureBps = vm.envUint("MIDNIGHT_MAX_EXPOSURE_BPS");
 
         adapter = new YoMidnightAdapter{ salt: SALT }(
             IMorpho(getMorphoBlue()),
@@ -69,6 +72,7 @@ contract Deploy_MidnightAdapter is BaseScript {
             maxTimeToMaturity,
             maxContinuousFeeCap,
             minRate,
+            maxExposureBps,
             yoRegistry
         );
 
@@ -119,6 +123,7 @@ contract Deploy_MidnightAdapter is BaseScript {
         console2.log("maxTimeToMaturity:      ", adapter.maxTimeToMaturity());
         console2.log("maxContinuousFeeCap:    ", adapter.maxContinuousFeeCap());
         console2.log("minRate:                ", adapter.minRate());
+        console2.log("maxExposureBps:         ", adapter.maxExposureBps());
         console2.log("YoRegistry (existing):  ", address(adapter.yoRegistry()));
     }
 }

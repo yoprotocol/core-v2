@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -33,6 +34,23 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///             maxContinuousFeeCap`, and a price that earns at least `minRate` net of
 ///             `continuousFeeCap`. The vault's callback funds it from an allowed Blue market with the
 ///             same loan token.
+///           - `fundCallback` keeps `deployedAssets[vault] <= maxExposureBps` of the vault's
+///             `totalAssets()`, and funds only in the vault's asset.
+///         EXPOSURE: every fill draws from the callback, so the assets that `fundCallback` sends
+///         bound the vault's exposure (callback Blue positions plus Midnight credit). A fill pays
+///         `buyerAssets` from Blue for credit and does not change the assets the vault has put in.
+///         `deployedAssets` is that net principal: it adds each funding and subtracts each defund
+///         and redemption in the vault's asset, floored at 0. It does not cap offer sizes; it caps
+///         what the offers can fill. Limits:
+///           - The cap applies only to new funding: when `totalAssets()` falls, exposure can exceed
+///             it. `totalAssets()` is read at funding time, so a deposit just before and a redeem
+///             just after raise the base for that call, and shares of queued redeems still count.
+///           - Accrued Blue interest and the fill discount are not counted. A defund or redeem of
+///             them lowers `deployedAssets`, so exposure can exceed the cap by that yield.
+///           - Realized losses, and assets that leave a callback without the adapter, are not
+///             subtracted. Then `deployedAssets` stays higher than the exposure.
+///         `maxExposureBps` is the same for every vault. A vault that needs a different cap needs
+///         a different adapter.
 ///         REVOCATION: the ratifier checks only the Merkle proof and the root, so removing a market
 ///         family or market from `registry` does not revoke roots already ratified. To revoke a
 ///         root, `unratify` it (see `MidnightRootSet`), raise the group's `consumed` on Midnight, or
@@ -90,6 +108,12 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     ///         Midnight's `continuousFee`. The rate is net of the offer's `continuousFeeCap` and
     ///         counts from the earliest take time to maturity.
     uint256 public immutable minRate;
+    /// @notice Upper bound on `deployedAssets[vault]` at funding time, in bps of the vault's
+    ///         `totalAssets()`. The same for every vault.
+    uint256 public immutable maxExposureBps;
+
+    /// @inheritdoc IYoMidnightAdapter
+    mapping(address vault => uint256 assets) public deployedAssets;
 
     constructor(
         IMorpho _morpho,
@@ -100,14 +124,15 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         uint256 _maxTimeToMaturity,
         uint256 _maxContinuousFeeCap,
         uint256 _minRate,
+        uint256 _maxExposureBps,
         IYoRegistry _yoRegistry
     )
         YoAdapterBase(_yoRegistry)
     {
         if (
-            address(_registry) == address(0) || _maxTimeToMaturity == 0 || _minRate == 0
-                || _ratifier.MIDNIGHT() != address(_midnight) || _callbackFactory.MIDNIGHT() != address(_midnight)
-                || _callbackFactory.BLUE() != address(_morpho)
+            address(_registry) == address(0) || _maxTimeToMaturity == 0 || _minRate == 0 || _maxExposureBps == 0
+                || _maxExposureBps > BPS_DENOMINATOR || _ratifier.MIDNIGHT() != address(_midnight)
+                || _callbackFactory.MIDNIGHT() != address(_midnight) || _callbackFactory.BLUE() != address(_morpho)
         ) {
             revert InvalidConfig();
         }
@@ -119,6 +144,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         maxTimeToMaturity = _maxTimeToMaturity;
         maxContinuousFeeCap = _maxContinuousFeeCap;
         minRate = _minRate;
+        maxExposureBps = _maxExposureBps;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -150,6 +176,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
             revert CallbackNotAuthorized(callback);
         }
         MarketParams memory p = _marketParams(blueMarketId);
+        _reserveExposure(vault, p.loanToken, assets);
 
         IERC20 token = IERC20(p.loanToken);
         uint256 sharesBefore = morpho.position(blueMarketId, callback).supplyShares;
@@ -190,6 +217,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         MarketParams memory p = _marketParams(blueMarketId);
 
         (assetsWithdrawn, sharesBurned) = morpho.withdraw(p, assets, 0, callback, vault);
+        _releaseExposure(vault, p.loanToken, assetsWithdrawn);
 
         emit MidnightCallbackAction(vault, callback, blueMarketId, AdapterDirection.Withdraw, assetsWithdrawn);
     }
@@ -216,6 +244,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         }
 
         (assetsWithdrawn, sharesBurned) = morpho.withdraw(p, 0, shares, callback, vault);
+        _releaseExposure(vault, p.loanToken, assetsWithdrawn);
 
         emit MidnightCallbackAction(vault, callback, blueMarketId, AdapterDirection.Withdraw, assetsWithdrawn);
     }
@@ -265,6 +294,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
             revert InvalidAmount();
         }
         midnight.withdraw(market, units, msg.sender, msg.sender);
+        _releaseExposure(msg.sender, market.loanToken, units);
 
         _emitAction(address(midnight), market.loanToken, AdapterDirection.Withdraw, units);
     }
@@ -371,5 +401,34 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         if (p.loanToken == address(0)) {
             revert UnknownMarket(blueMarketId);
         }
+    }
+
+    /// @dev Checks the cap and adds `assets` to `deployedAssets`. Funding must be in the vault's
+    ///      asset, so `deployedAssets` and `totalAssets()` share units.
+    function _reserveExposure(address vault, address loanToken, uint256 assets) internal {
+        if (!_isVaultAsset(vault, loanToken)) {
+            revert LoanTokenNotVaultAsset(loanToken);
+        }
+        uint256 deployed = deployedAssets[vault] + assets;
+        uint256 cap = _applyBps(IERC4626(vault).totalAssets(), maxExposureBps);
+        if (deployed > cap) {
+            revert ExposureCapExceeded(deployed, cap);
+        }
+        deployedAssets[vault] = deployed;
+    }
+
+    /// @dev Subtracts `assets` from `deployedAssets`, floored at 0. Counts only the vault's asset:
+    ///      anyone can supply any token to a callback's Blue position, so other tokens must not
+    ///      lower `deployedAssets`.
+    function _releaseExposure(address vault, address loanToken, uint256 assets) internal {
+        if (!_isVaultAsset(vault, loanToken)) {
+            return;
+        }
+        uint256 deployed = deployedAssets[vault];
+        deployedAssets[vault] = assets < deployed ? deployed - assets : 0;
+    }
+
+    function _isVaultAsset(address vault, address token) internal view returns (bool) {
+        return token == IERC4626(vault).asset();
     }
 }

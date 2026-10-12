@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
 import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
-import { Id } from "src/interfaces/IMorpho.sol";
+import { Id, MarketParams } from "src/interfaces/IMorpho.sol";
 import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
 
 import { MockBlueBuyCallback } from "../../../../mocks/MockMidnight.sol";
@@ -40,6 +40,25 @@ contract DefundCallback_Integration_Concrete_Test is MidnightAdapter_Integration
         midnightAdapter.defundCallback(callback, fundingId, FUND_AMOUNT);
     }
 
+    function test_GivenLoanTokenNotVaultAsset() external {
+        // Anyone can supply any token to the callback's Blue position. Withdrawing it must not lower
+        // the vault's counted exposure.
+        MarketParams memory p = fundingParams;
+        p.loanToken = address(usdt);
+        Id m = Id.wrap(keccak256(abi.encode(p)));
+        mockMorpho.setMarketParams(m, p);
+        usdt.mint(users.eve, FUND_AMOUNT);
+        vm.startPrank(users.eve);
+        usdt.approve(address(mockMorpho), FUND_AMOUNT);
+        mockMorpho.supply(p, FUND_AMOUNT, 0, callback, "");
+        vm.stopPrank();
+
+        vm.prank(users.vault);
+        midnightAdapter.defundCallback(callback, m, FUND_AMOUNT);
+
+        assertEq(midnightAdapter.deployedAssets(users.vault), FUND_AMOUNT, "deployedAssets");
+    }
+
     function test_GivenFundingMarketRemovedFromAllowlist() external {
         vm.prank(users.owner);
         marketRegistry.setAllowed(users.vault, fundingId, false);
@@ -71,6 +90,7 @@ contract DefundCallback_Integration_Concrete_Test is MidnightAdapter_Integration
         assertGt(sharesBurned, 0, "sharesBurned");
         assertEq(mockMorpho.position(fundingId, callback).supplyShares, FUND_AMOUNT - part, "callback shares");
         assertEq(usdc.balanceOf(users.vault), vaultBefore + part, "vault USDC delta");
+        assertEq(midnightAdapter.deployedAssets(users.vault), FUND_AMOUNT - part, "deployedAssets");
         assertZeroBalance(address(usdc), address(midnightAdapter));
     }
 }
