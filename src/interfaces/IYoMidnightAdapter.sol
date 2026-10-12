@@ -20,6 +20,7 @@ interface IYoMidnightAdapter {
     error InvalidRatifier(uint256 index);
     error FamilyNotAllowed(uint256 index, Id familyId);
     error MaturityOutOfRange(uint256 index);
+    error TermTooShort(uint256 index);
     error ExpiryAfterMaturity(uint256 index);
     error ContinuousFeeCapTooHigh(uint256 index);
     error RateBelowMin(uint256 index);
@@ -31,7 +32,9 @@ interface IYoMidnightAdapter {
     error ExposureCapExceeded(uint256 deployed, uint256 cap);
 
     /// @notice Supply `assets` of the vault's loan token to Blue market `blueMarketId` on behalf of
-    ///         the vault's `callback`.
+    ///         the vault's `callback`. The market's loan token must be the vault's asset, and
+    ///         `deployedAssets` after the funding must not exceed the vault's cap in the Midnight
+    ///         registry.
     function fundCallback(
         address callback,
         Id blueMarketId,

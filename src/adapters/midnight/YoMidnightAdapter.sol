@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IBlueBuyCallback } from "../../interfaces/external/IBlueBuyCallback.sol";
 import { Id, IMorpho, MarketParams } from "../../interfaces/IMorpho.sol";
 import { IYoMidnightAdapter } from "../../interfaces/IYoMidnightAdapter.sol";
+import { IYoMidnightRegistry } from "../../interfaces/IYoMidnightRegistry.sol";
 import { IYoMorphoMarketRegistry } from "../../interfaces/IYoMorphoMarketRegistry.sol";
 import { IYoRegistry } from "../../interfaces/IYoRegistry.sol";
 import { IMidnight, Market, Offer } from "../../vendor/morpho-midnight/interfaces/IMidnight.sol";
@@ -30,27 +31,27 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///           - A callback is used only if `callbackFactory` created it and its `OWNER` is the vault.
 ///           - Funds that leave a callback or Midnight go only to the vault.
 ///           - At ratify time, every leaf is a vault buy offer via `ratifier`, in an allowed market family,
-///             with `expiry <= maturity <= now + maxTimeToMaturity`, `continuousFeeCap <=
-///             maxContinuousFeeCap`, and a price that earns at least `minRate` net of
-///             `continuousFeeCap`. The vault's callback funds it from an allowed Blue market with the
-///             same loan token.
-///           - `fundCallback` keeps `deployedAssets[vault] <= maxExposureBps` of the vault's
-///             `totalAssets()`, and funds only in the vault's asset.
-///         EXPOSURE: every fill draws from the callback, so the assets that `fundCallback` sends
-///         bound the vault's exposure (callback Blue positions plus Midnight credit). A fill pays
-///         `buyerAssets` from Blue for credit and does not change the assets the vault has put in.
-///         `deployedAssets` is that net principal: it adds each funding and subtracts each defund
-///         and redemption in the vault's asset, floored at 0. It does not cap offer sizes; it caps
-///         what the offers can fill. Limits:
-///           - The cap applies only to new funding: when `totalAssets()` falls, exposure can exceed
-///             it. `totalAssets()` is read at funding time, so a deposit just before and a redeem
-///             just after raise the base for that call, and shares of queued redeems still count.
+///             with `expiry <= maturity <= now + maxTimeToMaturity`, at least `minTerm` from the
+///             earliest take to maturity, `continuousFeeCap <= maxContinuousFeeCap`, and a price
+///             that earns at least `minRate` net of `continuousFeeCap`. The vault's callback funds it from an allowed
+/// Blue market with the same loan token.
+///           - `fundCallback` keeps `deployedAssets[vault] <= midnightRegistry.cap(vault)`, and
+///             funds only in the vault's asset.
+///         EXPOSURE: `deployedAssets` is the net principal that the vault sent through the adapter.
+///         It adds each funding and subtracts each defund and redemption in the vault's asset,
+///         floored at 0. A fill moves assets from the callback's Blue position to Midnight credit
+///         and does not change it. The cap is a fixed amount per vault in `midnightRegistry`, not
+///         a share of `totalAssets()`: that counts only the shares on this chain, and a deposit
+///         can raise it. Limits:
+///           - The cap applies only to new funding. It does not cap offer sizes.
+///           - Assets that reach a callback without the adapter (anyone can supply to Blue on
+///             behalf of a callback) are not counted. Fills can use them, and a later defund or
+///             redeem of them lowers `deployedAssets`.
 ///           - Accrued Blue interest and the fill discount are not counted. A defund or redeem of
-///             them lowers `deployedAssets`, so exposure can exceed the cap by that yield.
+///             them also lowers `deployedAssets`, and this adds up across rolling positions.
 ///           - Realized losses, and assets that leave a callback without the adapter, are not
-///             subtracted. Then `deployedAssets` stays higher than the exposure.
-///         `maxExposureBps` is the same for every vault. A vault that needs a different cap needs
-///         a different adapter.
+///             subtracted. Governance can change the cap to correct for this drift.
+///         A vault without a cap cannot fund.
 ///         REVOCATION: the ratifier checks only the Merkle proof and the root, so removing a market
 ///         family or market from `registry` does not revoke roots already ratified. To revoke a
 ///         root, `unratify` it (see `MidnightRootSet`), raise the group's `consumed` on Midnight, or
@@ -69,10 +70,12 @@ import { YoAdapterBase } from "../base/YoAdapterBase.sol";
 ///         spaces do not collide: a family id is a CREATE2-style hash of a full `Market`, a Blue id
 ///         hashes a `MarketParams`.
 ///         VAULT SETUP (governance): `Midnight.setIsAuthorized(ratifier, true, vault)`,
-///         `Midnight.setIsAuthorized(adapter, true, vault)`, and `callback.setAuthorization(adapter,
-///         true)`. The operator must not get direct `manage` access to `ratifier.setIsRootRatified`,
-///         `Midnight.setIsAuthorized`, `Midnight.take`, or `callback.setAuthorization`; that access
-///         bypasses the offer checks in `ratify`.
+///         `Midnight.setIsAuthorized(adapter, true, vault)`, `callback.setAuthorization(adapter,
+///         true)`, and `midnightRegistry.setCap(vault, assets)`. Grant the operator only the
+///         adapter selectors. Other `manage` access to Midnight, the ratifier, a callback, or Blue
+///         on behalf of a callback (for example `Midnight.take`, `ratifier.setIsRootRatified`,
+///         `callback.setAuthorization`, or `Blue.supply`) bypasses the checks in `ratify` or the
+///         cap.
 contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     using SafeERC20 for IERC20;
 
@@ -100,17 +103,19 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     ISetterRatifier public immutable ratifier;
     IBlueBuyCallbackFactory public immutable callbackFactory;
     IYoMorphoMarketRegistry public immutable registry;
+    /// @notice Per-vault cap on `deployedAssets`.
+    IYoMidnightRegistry public immutable midnightRegistry;
     /// @notice Upper bound on `maturity - block.timestamp` for ratified offers.
     uint256 public immutable maxTimeToMaturity;
+    /// @notice Lower bound on `maturity - max(block.timestamp, start)` for ratified offers. With
+    ///         `minRate`, it sets the smallest discount to par: about `minRate * minTerm`.
+    uint256 public immutable minTerm;
     /// @notice Upper bound on `continuousFeeCap` for ratified offers, in Midnight's continuous-fee units.
     uint256 public immutable maxContinuousFeeCap;
     /// @notice Lower bound on the rate of ratified offers: simple interest, WAD per second, as
     ///         Midnight's `continuousFee`. The rate is net of the offer's `continuousFeeCap` and
     ///         counts from the earliest take time to maturity.
     uint256 public immutable minRate;
-    /// @notice Upper bound on `deployedAssets[vault]` at funding time, in bps of the vault's
-    ///         `totalAssets()`. The same for every vault.
-    uint256 public immutable maxExposureBps;
 
     /// @inheritdoc IYoMidnightAdapter
     mapping(address vault => uint256 assets) public deployedAssets;
@@ -121,17 +126,18 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         ISetterRatifier _ratifier,
         IBlueBuyCallbackFactory _callbackFactory,
         IYoMorphoMarketRegistry _registry,
+        IYoMidnightRegistry _midnightRegistry,
         uint256 _maxTimeToMaturity,
+        uint256 _minTerm,
         uint256 _maxContinuousFeeCap,
         uint256 _minRate,
-        uint256 _maxExposureBps,
         IYoRegistry _yoRegistry
     )
         YoAdapterBase(_yoRegistry)
     {
         if (
-            address(_registry) == address(0) || _maxTimeToMaturity == 0 || _minRate == 0 || _maxExposureBps == 0
-                || _maxExposureBps > BPS_DENOMINATOR || _ratifier.MIDNIGHT() != address(_midnight)
+            address(_registry) == address(0) || address(_midnightRegistry) == address(0) || _minTerm == 0
+                || _minTerm > _maxTimeToMaturity || _minRate == 0 || _ratifier.MIDNIGHT() != address(_midnight)
                 || _callbackFactory.MIDNIGHT() != address(_midnight) || _callbackFactory.BLUE() != address(_morpho)
         ) {
             revert InvalidConfig();
@@ -141,10 +147,11 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         ratifier = _ratifier;
         callbackFactory = _callbackFactory;
         registry = _registry;
+        midnightRegistry = _midnightRegistry;
         maxTimeToMaturity = _maxTimeToMaturity;
+        minTerm = _minTerm;
         maxContinuousFeeCap = _maxContinuousFeeCap;
         minRate = _minRate;
-        maxExposureBps = _maxExposureBps;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -341,24 +348,25 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         if (offer.continuousFeeCap > maxContinuousFeeCap) {
             revert ContinuousFeeCapTooHigh(index);
         }
-        if (!_meetsMinRate(offer)) {
-            revert RateBelowMin(index);
-        }
+        _validateRate(offer, index);
     }
 
     /// @dev The vault pays `price` per unit at the take and gets 1 per unit at maturity, less the
     ///      continuous fee (at most `continuousFeeCap * timeToMaturity` per unit). The price does
     ///      not change with time, so the rate is lowest at the earliest take: `max(now, start)`.
-    ///      Requires `(1 - fee) >= price * (1 + minRate * timeToMaturity)`, in WAD.
-    function _meetsMinRate(Offer calldata offer) internal view returns (bool) {
+    ///      Requires `(1 - fee) >= price * (1 + minRate * timeToMaturity)`, in WAD, and
+    ///      `timeToMaturity >= minTerm`: near 0, the check passes a price at par.
+    function _validateRate(Offer calldata offer, uint256 index) internal view {
         uint256 earliestTake = offer.start > block.timestamp ? offer.start : block.timestamp;
         uint256 maturity = offer.market.maturity;
-        uint256 timeToMaturity = maturity > earliestTake ? maturity - earliestTake : 0;
-        uint256 fee = offer.continuousFeeCap * timeToMaturity;
-        if (fee >= WAD) {
-            return false;
+        if (maturity <= earliestTake || maturity - earliestTake < minTerm) {
+            revert TermTooShort(index);
         }
-        return TickLib.tickToPrice(offer.tick) * (WAD + minRate * timeToMaturity) <= (WAD - fee) * WAD;
+        uint256 timeToMaturity = maturity - earliestTake;
+        uint256 fee = offer.continuousFeeCap * timeToMaturity;
+        if (fee >= WAD || TickLib.tickToPrice(offer.tick) * (WAD + minRate * timeToMaturity) > (WAD - fee) * WAD) {
+            revert RateBelowMin(index);
+        }
     }
 
     function _validateFunding(address vault, Offer calldata offer, uint256 index) internal view {
@@ -404,13 +412,13 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     }
 
     /// @dev Checks the cap and adds `assets` to `deployedAssets`. Funding must be in the vault's
-    ///      asset, so `deployedAssets` and `totalAssets()` share units.
+    ///      asset, the unit of the cap.
     function _reserveExposure(address vault, address loanToken, uint256 assets) internal {
         if (!_isVaultAsset(vault, loanToken)) {
             revert LoanTokenNotVaultAsset(loanToken);
         }
         uint256 deployed = deployedAssets[vault] + assets;
-        uint256 cap = _applyBps(IERC4626(vault).totalAssets(), maxExposureBps);
+        uint256 cap = midnightRegistry.cap(vault);
         if (deployed > cap) {
             revert ExposureCapExceeded(deployed, cap);
         }

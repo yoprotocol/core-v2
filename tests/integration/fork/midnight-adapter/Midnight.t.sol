@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
 import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
 import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
+import { YoMidnightRegistry } from "src/registries/YoMidnightRegistry.sol";
 import { CollateralParams, IMidnight, Market, Offer } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
 import {
     IBlueBuyCallbackFactory
@@ -46,20 +47,19 @@ abstract contract MidnightFork_Test is Fork_Test {
     uint256 internal constant TICK = 4400;
     /// @dev About 2.7% per year over `TERM`, below `MIN_RATE`.
     uint256 internal constant TICK_BELOW_MIN_RATE = 4600;
+    /// @dev A price of exactly 1: 0% per year.
+    uint256 internal constant TICK_PAR = 6744;
     /// @dev 3% per year.
     uint256 internal constant MIN_RATE = 0.03e18 / uint256(365 days);
     uint256 internal constant FUND_AMOUNT = 100_000e6;
     uint256 internal constant TAKE_UNITS = 10_000e6;
-    /// @dev The vault's `totalAssets()` at the mocked 1:1 NAV.
-    uint256 internal constant VAULT_TOTAL_ASSETS = 500_000e6;
-    /// @dev 20% of `VAULT_TOTAL_ASSETS`, which is exactly `FUND_AMOUNT`.
-    uint256 internal constant MAX_EXPOSURE_BPS = 2000;
 
     IMidnight internal midnight;
     ISetterRatifier internal ratifier;
     IBlueBuyCallbackFactory internal factory;
     IERC20 internal usdc;
 
+    YoMidnightRegistry internal midnightRegistry;
     YoMidnightAdapter internal adapter;
     address internal callback;
     address internal borrower;
@@ -90,16 +90,18 @@ abstract contract MidnightFork_Test is Fork_Test {
         _deployStack(usdc, "Yo USDC Vault", "yoUSDC");
         borrower = makeAddr("Borrower");
 
+        midnightRegistry = new YoMidnightRegistry(users.owner);
         adapter = new YoMidnightAdapter(
             IMorpho(address(MORPHO)),
             midnight,
             ratifier,
             factory,
             marketRegistry,
+            midnightRegistry,
             60 days,
+            1 days,
             0,
             MIN_RATE,
-            MAX_EXPOSURE_BPS,
             yoRegistry
         );
         callback = factory.createBlueBuyCallback(address(yoVault), bytes32(0));
@@ -119,6 +121,7 @@ abstract contract MidnightFork_Test is Fork_Test {
         vm.startPrank(users.owner);
         marketRegistry.setAllowed(address(yoVault), fundingId, true);
         marketRegistry.setAllowed(address(yoVault), adapter.marketFamilyId(market), true);
+        midnightRegistry.setCap(address(yoVault), FUND_AMOUNT);
         vm.stopPrank();
 
         // Governance set-up for the vault. The operator keeps no rights on these selectors.
@@ -133,8 +136,6 @@ abstract contract MidnightFork_Test is Fork_Test {
         _governanceManage(callback, authorizeAdapter);
         _vaultApprove(usdc, address(adapter), FUND_AMOUNT);
 
-        // Shares held elsewhere give the vault its `totalAssets()`; only `FUND_AMOUNT` is idle.
-        deal(address(yoVault), makeAddr("Depositor"), VAULT_TOTAL_ASSETS, true);
         deal(address(usdc), address(yoVault), FUND_AMOUNT);
     }
 
@@ -232,6 +233,18 @@ abstract contract MidnightFork_Test is Fork_Test {
 
         vm.prank(users.operator);
         vm.expectRevert(abi.encodeWithSelector(IYoMidnightAdapter.RateBelowMin.selector, 0));
+        yoVault.manage(address(adapter), data, 0);
+    }
+
+    function testFork_Midnight_RatifyRejectsParBidAtMaturity() external {
+        Offer[] memory offers = new Offer[](1);
+        offers[0] = _offer(TICK_PAR);
+        offers[0].start = offers[0].market.maturity;
+        bytes memory data = abi.encodeCall(YoMidnightAdapter.ratify, (offers));
+        authority.setAllowed(users.operator, address(adapter), bytes4(data), true);
+
+        vm.prank(users.operator);
+        vm.expectRevert(abi.encodeWithSelector(IYoMidnightAdapter.TermTooShort.selector, 0));
         yoVault.manage(address(adapter), data, 0);
     }
 

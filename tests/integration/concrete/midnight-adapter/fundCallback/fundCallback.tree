@@ -17,6 +17,8 @@ FundCallback_Integration_Concrete_Test
          └── given known market
             ├── when loan token not vault asset
             │  └── it should revert with LoanTokenNotVaultAsset
+            ├── given cap not set
+            │  └── it should revert with ExposureCapExceeded
             ├── when funding exceeds exposure cap
             │  └── it should revert with ExposureCapExceeded
             └── when funding within exposure cap

@@ -20,6 +20,10 @@ Ratify_Integration_Concrete_Test
    │  └── it should revert with ExpiryAfterMaturity
    ├── when continuous fee cap above max
    │  └── it should revert with ContinuousFeeCapTooHigh
+   ├── when maturity within min term of now
+   │  └── it should revert with TermTooShort
+   ├── when start within min term of maturity
+   │  └── it should revert with TermTooShort
    ├── when price below min rate
    │  └── it should revert with RateBelowMin
    ├── when continuous fee cap lowers net rate below min rate

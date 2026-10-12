@@ -14,6 +14,8 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
     uint256 internal constant TICK_BELOW_MIN_RATE_NET_OF_FEE = 4544;
     /// @dev About 2% per year to a 2-day maturity from now, about 4% per year from 1 day later.
     uint256 internal constant TICK_ABOVE_MIN_RATE_FROM_START = 5200;
+    /// @dev A price of exactly 1: 0% per year.
+    uint256 internal constant TICK_PAR = 6744;
 
     function _expectRatifyRevert(Offer memory offer, bytes memory reason) internal {
         vm.prank(users.vault);
@@ -82,6 +84,24 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         Offer memory offer = _offer();
         offer.continuousFeeCap = MAX_CONTINUOUS_FEE_CAP + 1;
         _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.ContinuousFeeCapTooHigh.selector, 0));
+    }
+
+    function test_WhenMaturityWithinMinTermOfNow() external {
+        Offer memory offer = _offer();
+        offer.market.maturity = block.timestamp + MIN_TERM - 1;
+        offer.expiry = offer.market.maturity;
+        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.TermTooShort.selector, 0));
+    }
+
+    function test_WhenStartWithinMinTermOfMaturity() external {
+        // A bid at par that can only be taken at maturity.
+        Offer memory offer = _offer();
+        offer.tick = TICK_PAR;
+        offer.start = offer.market.maturity;
+        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.TermTooShort.selector, 0));
+
+        offer.start = offer.market.maturity - MIN_TERM + 1;
+        _expectRatifyRevert(offer, abi.encodeWithSelector(IYoMidnightAdapter.TermTooShort.selector, 0));
     }
 
     function test_WhenPriceBelowMinRate() external {

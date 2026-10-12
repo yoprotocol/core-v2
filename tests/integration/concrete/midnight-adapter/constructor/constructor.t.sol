@@ -4,6 +4,7 @@ pragma solidity 0.8.34;
 import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
 import { IMorpho } from "src/interfaces/IMorpho.sol";
 import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
+import { IYoMidnightRegistry } from "src/interfaces/IYoMidnightRegistry.sol";
 import { IYoMorphoMarketRegistry } from "src/interfaces/IYoMorphoMarketRegistry.sol";
 import { IMidnight } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
 import {
@@ -23,10 +24,28 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             ISetterRatifier(address(mockRatifier)),
             IBlueBuyCallbackFactory(address(mockCallbackFactory)),
             IYoMorphoMarketRegistry(address(0)),
+            midnightRegistry,
             MAX_TIME_TO_MATURITY,
+            MIN_TERM,
             MAX_CONTINUOUS_FEE_CAP,
             MIN_RATE,
-            MAX_EXPOSURE_BPS,
+            yoRegistry
+        );
+    }
+
+    function test_WhenMidnightRegistryZero() external {
+        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
+        new YoMidnightAdapter(
+            IMorpho(address(mockMorpho)),
+            IMidnight(address(mockMidnight)),
+            ISetterRatifier(address(mockRatifier)),
+            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
+            marketRegistry,
+            IYoMidnightRegistry(address(0)),
+            MAX_TIME_TO_MATURITY,
+            MIN_TERM,
+            MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
             yoRegistry
         );
     }
@@ -39,10 +58,45 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             ISetterRatifier(address(mockRatifier)),
             IBlueBuyCallbackFactory(address(mockCallbackFactory)),
             marketRegistry,
+            midnightRegistry,
+            0,
+            MIN_TERM,
+            MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
+            yoRegistry
+        );
+    }
+
+    function test_WhenMinTermZero() external {
+        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
+        new YoMidnightAdapter(
+            IMorpho(address(mockMorpho)),
+            IMidnight(address(mockMidnight)),
+            ISetterRatifier(address(mockRatifier)),
+            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
+            marketRegistry,
+            midnightRegistry,
+            MAX_TIME_TO_MATURITY,
             0,
             MAX_CONTINUOUS_FEE_CAP,
             MIN_RATE,
-            MAX_EXPOSURE_BPS,
+            yoRegistry
+        );
+    }
+
+    function test_WhenMinTermAboveMaxTimeToMaturity() external {
+        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
+        new YoMidnightAdapter(
+            IMorpho(address(mockMorpho)),
+            IMidnight(address(mockMidnight)),
+            ISetterRatifier(address(mockRatifier)),
+            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
+            marketRegistry,
+            midnightRegistry,
+            MAX_TIME_TO_MATURITY,
+            MAX_TIME_TO_MATURITY + 1,
+            MAX_CONTINUOUS_FEE_CAP,
+            MIN_RATE,
             yoRegistry
         );
     }
@@ -55,42 +109,11 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
             ISetterRatifier(address(mockRatifier)),
             IBlueBuyCallbackFactory(address(mockCallbackFactory)),
             marketRegistry,
+            midnightRegistry,
             MAX_TIME_TO_MATURITY,
+            MIN_TERM,
             MAX_CONTINUOUS_FEE_CAP,
             0,
-            MAX_EXPOSURE_BPS,
-            yoRegistry
-        );
-    }
-
-    function test_WhenMaxExposureBpsZero() external {
-        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
-        new YoMidnightAdapter(
-            IMorpho(address(mockMorpho)),
-            IMidnight(address(mockMidnight)),
-            ISetterRatifier(address(mockRatifier)),
-            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
-            marketRegistry,
-            MAX_TIME_TO_MATURITY,
-            MAX_CONTINUOUS_FEE_CAP,
-            MIN_RATE,
-            0,
-            yoRegistry
-        );
-    }
-
-    function test_WhenMaxExposureBpsAbove10000() external {
-        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
-        new YoMidnightAdapter(
-            IMorpho(address(mockMorpho)),
-            IMidnight(address(mockMidnight)),
-            ISetterRatifier(address(mockRatifier)),
-            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
-            marketRegistry,
-            MAX_TIME_TO_MATURITY,
-            MAX_CONTINUOUS_FEE_CAP,
-            MIN_RATE,
-            10_001,
             yoRegistry
         );
     }
@@ -136,10 +159,11 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
         assertEq(address(midnightAdapter.ratifier()), address(mockRatifier), "ratifier");
         assertEq(address(midnightAdapter.callbackFactory()), address(mockCallbackFactory), "callbackFactory");
         assertEq(address(midnightAdapter.registry()), address(marketRegistry), "registry");
+        assertEq(address(midnightAdapter.midnightRegistry()), address(midnightRegistry), "midnightRegistry");
         assertEq(midnightAdapter.maxTimeToMaturity(), MAX_TIME_TO_MATURITY, "maxTimeToMaturity");
+        assertEq(midnightAdapter.minTerm(), MIN_TERM, "minTerm");
         assertEq(midnightAdapter.maxContinuousFeeCap(), MAX_CONTINUOUS_FEE_CAP, "maxContinuousFeeCap");
         assertEq(midnightAdapter.minRate(), MIN_RATE, "minRate");
-        assertEq(midnightAdapter.maxExposureBps(), MAX_EXPOSURE_BPS, "maxExposureBps");
         assertEq(address(midnightAdapter.yoRegistry()), address(yoRegistry), "yoRegistry");
     }
 }

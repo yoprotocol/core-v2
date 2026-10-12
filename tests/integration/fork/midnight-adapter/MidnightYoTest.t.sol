@@ -13,6 +13,7 @@ import { IYoApprovalRegistry } from "src/interfaces/IYoApprovalRegistry.sol";
 import { IYoMorphoMarketRegistry } from "src/interfaces/IYoMorphoMarketRegistry.sol";
 import { IYoRegistry } from "src/interfaces/IYoRegistry.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { YoMidnightRegistry } from "src/registries/YoMidnightRegistry.sol";
 import { CollateralParams, IMidnight, Market, Offer } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
 import {
     IBlueBuyCallbackFactory
@@ -78,8 +79,6 @@ contract MidnightYoTestFork_Test is Test {
     uint256 internal constant TICK = 4400;
     /// @dev 3% per year.
     uint256 internal constant MIN_RATE = 0.03e18 / uint256(365 days);
-    /// @dev 20% of yoTest's ~14.3k USDC at `FORK_BLOCK` is ~2.9k USDC, above `FUND_AMOUNT`.
-    uint256 internal constant MAX_EXPOSURE_BPS = 2000;
 
     YoMidnightAdapter internal adapter;
     address internal callback;
@@ -101,8 +100,19 @@ contract MidnightYoTestFork_Test is Test {
         fundingParams = MORPHO.idToMarketParams(FUNDING_MARKET);
 
         // 1. Deploy with the production constructor arguments (see Deploy_MidnightAdapter).
+        YoMidnightRegistry midnightRegistry = new YoMidnightRegistry(ADMIN_SAFE);
         adapter = new YoMidnightAdapter(
-            MORPHO, MIDNIGHT, RATIFIER, FACTORY, MARKET_REGISTRY, 60 days, 0, MIN_RATE, MAX_EXPOSURE_BPS, YO_REGISTRY
+            MORPHO,
+            MIDNIGHT,
+            RATIFIER,
+            FACTORY,
+            MARKET_REGISTRY,
+            midnightRegistry,
+            60 days,
+            1 days,
+            0,
+            MIN_RATE,
+            YO_REGISTRY
         );
 
         // The Midnight market: cbBTC collateral priced by the funding market's Chainlink oracle.
@@ -137,6 +147,7 @@ contract MidnightYoTestFork_Test is Test {
         }
         MARKET_REGISTRY.setAllowed(address(YO_TEST), adapter.marketFamilyId(market), true);
         APPROVAL_REGISTRY.setApproval(address(YO_TEST), address(USDC), address(adapter), FUND_AMOUNT);
+        midnightRegistry.setCap(address(YO_TEST), FUND_AMOUNT);
         vm.stopPrank();
 
         // 3. yoTest owner: one-time vault calls through a TempAuthority swap.

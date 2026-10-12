@@ -60,6 +60,15 @@ contract FundCallback_Integration_Concrete_Test is MidnightAdapter_Integration_C
         midnightAdapter.fundCallback(callback, m, FUND_AMOUNT);
     }
 
+    function test_GivenCapNotSet() external {
+        vm.prank(users.owner);
+        midnightRegistry.setCap(users.vault, 0);
+
+        vm.prank(users.vault);
+        vm.expectRevert(abi.encodeWithSelector(IYoMidnightAdapter.ExposureCapExceeded.selector, FUND_AMOUNT, 0));
+        midnightAdapter.fundCallback(callback, fundingId, FUND_AMOUNT);
+    }
+
     function test_WhenFundingExceedsExposureCap() external {
         _fundCallback(FUND_AMOUNT);
 

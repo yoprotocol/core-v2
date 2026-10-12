@@ -4,11 +4,13 @@ pragma solidity 0.8.34;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
+import { IYoMidnightRegistry } from "src/interfaces/IYoMidnightRegistry.sol";
 import { Id, IMorpho, MarketParams } from "src/interfaces/IMorpho.sol";
 import { CollateralParams, IMidnight, Market, Offer } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
 import {
     IBlueBuyCallbackFactory
 } from "src/vendor/morpho-midnight/periphery/blue-buy-callback/interfaces/IBlueBuyCallbackFactory.sol";
+import { YoMidnightRegistry } from "src/registries/YoMidnightRegistry.sol";
 import { ISetterRatifier } from "src/vendor/morpho-midnight/ratifiers/interfaces/ISetterRatifier.sol";
 
 import {
@@ -23,6 +25,7 @@ import { Integration_Test } from "../../Integration.t.sol";
 ///         per vault, and an allowlisted funding market and market family for `users.vault`.
 abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test {
     uint256 internal constant MAX_TIME_TO_MATURITY = 60 days;
+    uint256 internal constant MIN_TERM = 1 days;
     /// @dev Midnight's `MAX_CONTINUOUS_FEE`: 1% per year.
     uint256 internal constant MAX_CONTINUOUS_FEE_CAP = 0.01e18 / uint256(365 days);
     /// @dev 3% per year.
@@ -33,15 +36,13 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
     /// @dev About 2.7% per year over `TERM`, below `MIN_RATE`.
     uint256 internal constant TICK_BELOW_MIN_RATE = 4600;
     uint256 internal constant FUND_AMOUNT = 10_000e6;
-    /// @dev `users.vault`'s `totalAssets()`, in USDC.
-    uint256 internal constant TOTAL_ASSETS = 100_000e6;
-    /// @dev 20% of `TOTAL_ASSETS`: 20_000e6, twice `FUND_AMOUNT`.
-    uint256 internal constant MAX_EXPOSURE_BPS = 2000;
-    uint256 internal constant CAP = TOTAL_ASSETS * MAX_EXPOSURE_BPS / 10_000;
+    /// @dev `users.vault`'s cap in `midnightRegistry`: twice `FUND_AMOUNT`.
+    uint256 internal constant CAP = 20_000e6;
 
     MockMidnight internal mockMidnight;
     MockSetterRatifier internal mockRatifier;
     MockBlueBuyCallbackFactory internal mockCallbackFactory;
+    YoMidnightRegistry internal midnightRegistry;
     YoMidnightAdapter internal midnightAdapter;
 
     /// @dev `users.vault`'s callback.
@@ -59,6 +60,7 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         mockMidnight = new MockMidnight();
         mockRatifier = new MockSetterRatifier(address(mockMidnight));
         mockCallbackFactory = new MockBlueBuyCallbackFactory(address(mockMidnight), address(mockMorpho));
+        midnightRegistry = new YoMidnightRegistry(users.owner);
         midnightAdapter = _deployAdapter(
             IMorpho(address(mockMorpho)),
             IMidnight(address(mockMidnight)),
@@ -70,6 +72,7 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         vm.label(address(mockMidnight), "MockMidnight");
         vm.label(address(mockRatifier), "MockSetterRatifier");
         vm.label(address(mockCallbackFactory), "MockBlueBuyCallbackFactory");
+        vm.label(address(midnightRegistry), "YoMidnightRegistry");
         vm.label(address(midnightAdapter), "YoMidnightAdapter");
         vm.label(callback, "VaultCallback");
         vm.label(eveCallback, "EveCallback");
@@ -88,7 +91,8 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
 
         // `users.vault` stands in for a USDC YoVault.
         vm.mockCall(users.vault, abi.encodeCall(IERC4626.asset, ()), abi.encode(address(usdc)));
-        _setVaultTotalAssets(TOTAL_ASSETS);
+        vm.prank(users.owner);
+        midnightRegistry.setCap(users.vault, CAP);
 
         // Governance set-up for the vault.
         vm.startPrank(users.vault);
@@ -97,10 +101,6 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
         mockMidnight.setIsAuthorized(address(midnightAdapter), true, users.vault);
         MockBlueBuyCallback(callback).setAuthorization(address(midnightAdapter), true);
         vm.stopPrank();
-    }
-
-    function _setVaultTotalAssets(uint256 totalAssets) internal {
-        vm.mockCall(users.vault, abi.encodeCall(IERC4626.totalAssets, ()), abi.encode(totalAssets));
     }
 
     function _deployAdapter(
@@ -118,10 +118,11 @@ abstract contract MidnightAdapter_Integration_Concrete_Test is Integration_Test 
             ratifier,
             factory,
             marketRegistry,
+            IYoMidnightRegistry(address(midnightRegistry)),
             MAX_TIME_TO_MATURITY,
+            MIN_TERM,
             MAX_CONTINUOUS_FEE_CAP,
             MIN_RATE,
-            MAX_EXPOSURE_BPS,
             yoRegistry
         );
     }

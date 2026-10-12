@@ -5,19 +5,22 @@ import { console2 } from "forge-std/src/console2.sol";
 
 import { YoMidnightAdapter } from "../src/adapters/midnight/YoMidnightAdapter.sol";
 import { IMorpho } from "../src/interfaces/IMorpho.sol";
+import { IYoMidnightRegistry } from "../src/interfaces/IYoMidnightRegistry.sol";
 import { IYoMorphoMarketRegistry } from "../src/interfaces/IYoMorphoMarketRegistry.sol";
 import { IYoRegistry } from "../src/interfaces/IYoRegistry.sol";
 import { IMidnight } from "../src/vendor/morpho-midnight/interfaces/IMidnight.sol";
 import {
     IBlueBuyCallbackFactory
 } from "../src/vendor/morpho-midnight/periphery/blue-buy-callback/interfaces/IBlueBuyCallbackFactory.sol";
+import { YoMidnightRegistry } from "../src/registries/YoMidnightRegistry.sol";
 import { ISetterRatifier } from "../src/vendor/morpho-midnight/ratifiers/interfaces/ISetterRatifier.sol";
 
 import { BaseScript } from "./Base.s.sol";
 import { ChainId } from "./ChainId.sol";
 
 /// @notice Deploys the immutable {YoMidnightAdapter} bound to Morpho Blue, Morpho Midnight, the
-///         Midnight `SetterRatifier`, and the `BlueBuyCallbackFactory`. Supported on Ethereum and
+///         Midnight `SetterRatifier`, and the `BlueBuyCallbackFactory`, and a {YoMidnightRegistry}
+///         for the per-vault caps unless `MIDNIGHT_REGISTRY` names one. Supported on Ethereum and
 ///         Base. The constructor checks that the ratifier and the factory point to the same
 ///         Midnight and Blue, so the deploy transaction validates the wiring.
 ///
@@ -28,14 +31,15 @@ import { ChainId } from "./ChainId.sol";
 ///           - `Midnight.setIsAuthorized(ratifier, true, vault)`.
 ///           - `Midnight.setIsAuthorized(adapter, true, vault)`.
 ///           - `callback.setAuthorization(adapter, true)`.
+///           - `midnightRegistry.setCap(vault, assets)` (registry owner): cap on the vault's assets
+///             in Midnight lending, in the vault's asset. A vault without a cap cannot fund.
 ///           - `marketRegistry.setAllowed(vault, blueMarketId, true)` for each funding market, and
 ///             `marketRegistry.setAllowed(vault, familyId, true)` for each Morpho market family
 ///             (`adapter.marketFamilyId(market)`, the same as the Morpho API's `market_family_id`).
 ///           - `approvalRegistry.setApproval(vault, loanToken, adapter, cap)` then
 ///             `vault.approveToken(loanToken, adapter, cap)`.
-///           - Grant the operator the adapter selectors only.
-///             Never grant the operator `Midnight.setIsAuthorized`, `Midnight.take`,
-///             `ratifier.setIsRootRatified`, or `callback.setAuthorization`.
+///           - Grant the operator the adapter selectors only. Never grant the operator other access
+///             to Midnight, the ratifier, a callback, or Blue on behalf of a callback.
 ///
 ///         Required env vars:
 ///           - YO_REGISTRY:              live YoRegistry proxy (adapter `rescue` auth).
@@ -43,15 +47,18 @@ import { ChainId } from "./ChainId.sol";
 ///           - MIDNIGHT_MIN_RATE:        minimum offer rate net of fees, simple interest, WAD per second,
 ///                                       as Midnight's `continuousFee`; nonzero. For example, 3% per
 ///                                       year is `0.03e18 / 365 days` = 951293759.
-///           - MIDNIGHT_MAX_EXPOSURE_BPS: cap on each vault's assets in Midnight lending, in bps of its
-///                                       `totalAssets()`; 1 to 10_000. For example, 2000 = 20%.
 ///         Optional env vars:
+///           - MIDNIGHT_REGISTRY:               live YoMidnightRegistry to reuse. When not set, the
+///                                              script deploys one owned by YO_OWNER (then required).
 ///           - MIDNIGHT_MAX_TIME_TO_MATURITY:   seconds; default 60 days.
+///           - MIDNIGHT_MIN_TERM:               seconds from the earliest take to maturity; default
+///                                              1 day. Nonzero, at most the max time to maturity.
 ///           - MIDNIGHT_MAX_CONTINUOUS_FEE_CAP: WAD per second, as Midnight's `continuousFee`; default 0.
 ///                                              Midnight's maximum is `0.01e18 / 365 days` (1% per year).
 ///           - ETH_FROM, MNEMONIC:              broadcaster key (see {BaseScript}).
 contract Deploy_MidnightAdapter is BaseScript {
     uint256 internal constant DEFAULT_MAX_TIME_TO_MATURITY = 60 days;
+    uint256 internal constant DEFAULT_MIN_TERM = 1 days;
 
     function run() public broadcast returns (YoMidnightAdapter adapter) {
         (address midnight, address ratifier, address callbackFactory) = getMidnight();
@@ -59,9 +66,10 @@ contract Deploy_MidnightAdapter is BaseScript {
         IYoMorphoMarketRegistry marketRegistry = IYoMorphoMarketRegistry(_requiredAddress("MORPHO_MARKET_REGISTRY"));
         uint256 maxTimeToMaturity =
             vm.envOr({ name: "MIDNIGHT_MAX_TIME_TO_MATURITY", defaultValue: DEFAULT_MAX_TIME_TO_MATURITY });
+        uint256 minTerm = vm.envOr({ name: "MIDNIGHT_MIN_TERM", defaultValue: DEFAULT_MIN_TERM });
         uint256 maxContinuousFeeCap = vm.envOr({ name: "MIDNIGHT_MAX_CONTINUOUS_FEE_CAP", defaultValue: uint256(0) });
         uint256 minRate = vm.envUint("MIDNIGHT_MIN_RATE");
-        uint256 maxExposureBps = vm.envUint("MIDNIGHT_MAX_EXPOSURE_BPS");
+        IYoMidnightRegistry midnightRegistry = _midnightRegistry();
 
         adapter = new YoMidnightAdapter{ salt: SALT }(
             IMorpho(getMorphoBlue()),
@@ -69,10 +77,11 @@ contract Deploy_MidnightAdapter is BaseScript {
             ISetterRatifier(ratifier),
             IBlueBuyCallbackFactory(callbackFactory),
             marketRegistry,
+            midnightRegistry,
             maxTimeToMaturity,
+            minTerm,
             maxContinuousFeeCap,
             minRate,
-            maxExposureBps,
             yoRegistry
         );
 
@@ -100,6 +109,14 @@ contract Deploy_MidnightAdapter is BaseScript {
         revert ChainNotSupported("Morpho Midnight", chainId);
     }
 
+    function _midnightRegistry() internal returns (IYoMidnightRegistry) {
+        address existing = vm.envOr({ name: "MIDNIGHT_REGISTRY", defaultValue: address(0) });
+        if (existing != address(0)) {
+            return IYoMidnightRegistry(existing);
+        }
+        return new YoMidnightRegistry{ salt: SALT }(getYoOwner());
+    }
+
     function _requiredAddress(string memory name) internal view returns (address value) {
         value = vm.envOr({ name: name, defaultValue: address(0) });
         if (value == address(0)) {
@@ -120,10 +137,11 @@ contract Deploy_MidnightAdapter is BaseScript {
         console2.log("SetterRatifier:         ", address(adapter.ratifier()));
         console2.log("BlueBuyCallbackFactory: ", address(adapter.callbackFactory()));
         console2.log("MorphoMarketRegistry:   ", address(adapter.registry()));
+        console2.log("MidnightRegistry:       ", address(adapter.midnightRegistry()));
         console2.log("maxTimeToMaturity:      ", adapter.maxTimeToMaturity());
+        console2.log("minTerm:                ", adapter.minTerm());
         console2.log("maxContinuousFeeCap:    ", adapter.maxContinuousFeeCap());
         console2.log("minRate:                ", adapter.minRate());
-        console2.log("maxExposureBps:         ", adapter.maxExposureBps());
         console2.log("YoRegistry (existing):  ", address(adapter.yoRegistry()));
     }
 }
