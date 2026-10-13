@@ -48,4 +48,6 @@ interface IMorpho {
         returns (uint256 assetsWithdrawn, uint256 sharesWithdrawn);
 
     function setAuthorization(address authorized, bool newIsAuthorized) external;
+
+    function isAuthorized(address authorizer, address authorized) external view returns (bool);
 }

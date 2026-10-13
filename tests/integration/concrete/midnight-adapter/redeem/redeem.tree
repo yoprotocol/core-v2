@@ -1,0 +1,16 @@
+Redeem_Integration_Concrete_Test
+├── when units zero
+│  └── it should revert with InvalidAmount
+└── when units non zero
+   ├── given adapter not authorized on Midnight
+   │  └── it should revert in Midnight
+   └── given adapter authorized on Midnight
+      ├── given units exceed vault credit
+      │  └── it should revert in Midnight
+      ├── given loan token not vault asset
+      │  └── it should keep deployedAssets
+      └── given units within vault credit
+         ├── it should burn vault credit
+         ├── it should send loan token to vault
+         ├── it should subtract units from deployedAssets
+         └── it should emit AdapterAction
