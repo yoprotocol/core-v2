@@ -7,9 +7,8 @@ import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IYoMidnightRegistry } from "../interfaces/IYoMidnightRegistry.sol";
 
 /// @title  YoMidnightRegistry
-/// @notice Per-vault cap on the assets that a vault has in Morpho Midnight lending through
-///         `YoMidnightAdapter`. A fixed amount for each vault on each chain: a vault's
-///         `totalAssets()` counts only the shares on its chain, and a deposit can raise it.
+/// @notice Fixed per-vault cap on Midnight lending through `YoMidnightAdapter`. Not a share of `totalAssets()`,
+///         which counts only this chain's shares and grows with deposits.
 contract YoMidnightRegistry is Ownable2Step, IYoMidnightRegistry {
     mapping(address vault => uint256 assets) private _caps;
 

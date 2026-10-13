@@ -4,8 +4,7 @@ pragma solidity 0.8.34;
 import { Market, Offer } from "../vendor/morpho-midnight/interfaces/IMidnight.sol";
 import { Id } from "./IMorpho.sol";
 
-/// @notice Immutable adapter that brokers a vault's Morpho Midnight fixed-rate lending: funding its
-///         `BlueBuyCallback`, ratifying validated offer trees, and redeeming credit.
+/// @notice Morpho Midnight fixed-rate lending adapter for YO vaults.
 interface IYoMidnightAdapter {
     error InvalidAmount();
     error InvalidConfig();
@@ -31,10 +30,8 @@ interface IYoMidnightAdapter {
     error LoanTokenNotVaultAsset(address loanToken);
     error ExposureCapExceeded(uint256 deployed, uint256 cap);
 
-    /// @notice Supply `assets` of the vault's loan token to Blue market `blueMarketId` on behalf of
-    ///         the vault's `callback`. The market's loan token must be the vault's asset, and
-    ///         `deployedAssets` after the funding must not exceed the vault's cap in the Midnight
-    ///         registry.
+    /// @notice Supply `assets` of the vault's asset to `blueMarketId` on behalf of the vault's `callback`,
+    ///         within the vault's cap.
     function fundCallback(
         address callback,
         Id blueMarketId,
@@ -69,8 +66,7 @@ interface IYoMidnightAdapter {
     /// @notice Burn `units` of the vault's credit in `market` and send the loan token to the vault.
     function redeem(Market calldata market, uint256 units) external;
 
-    /// @notice Net assets that the vault sent to Midnight lending: funded, less defunded and
-    ///         redeemed, in the vault's asset, floored at 0.
+    /// @notice Funded less defunded and redeemed, in the vault's asset, floored at 0.
     function deployedAssets(address vault) external view returns (uint256 assets);
 
     /// @notice Morpho market family id of `market`: the registry key that allows all its maturities.

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @notice Per-vault cap on the assets that a vault has in Morpho Midnight lending through
-///         `YoMidnightAdapter`.
+/// @notice Per-vault cap on Midnight lending through `YoMidnightAdapter`.
 interface IYoMidnightRegistry {
     event CapSet(address indexed vault, uint256 assets);
 
