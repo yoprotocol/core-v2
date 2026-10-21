@@ -1,0 +1,6 @@
+Cap_MidnightRegistry_Integration_Concrete_Test
+├── given cap not set
+│  └── it should return zero
+└── given cap set
+   ├── it should return the cap
+   └── it should not change the cap of other vaults

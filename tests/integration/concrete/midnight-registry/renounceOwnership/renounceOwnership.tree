@@ -1,0 +1,6 @@
+RenounceOwnership_MidnightRegistry_Integration_Concrete_Test
+├── when caller not owner
+│  └── it should revert with RenounceDisabled
+└── when caller owner
+   ├── it should revert with RenounceDisabled
+   └── it should keep the owner
