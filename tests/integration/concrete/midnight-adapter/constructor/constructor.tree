@@ -5,11 +5,13 @@ Constructor_Integration_Concrete_Test
 │  └── it should revert with InvalidConfig
 ├── when max time to maturity zero
 │  └── it should revert with InvalidConfig
-├── when min term zero
+├── when min term below lower bound
 │  └── it should revert with InvalidConfig
 ├── when min term above max time to maturity
 │  └── it should revert with InvalidConfig
-├── when min rate zero
+├── when min rate below lower bound
+│  └── it should revert with InvalidConfig
+├── when min rate above upper bound
 │  └── it should revert with InvalidConfig
 ├── when ratifier points to another Midnight
 │  └── it should revert with InvalidConfig
@@ -17,5 +19,7 @@ Constructor_Integration_Concrete_Test
 │  └── it should revert with InvalidConfig
 ├── when callback factory points to another Blue
 │  └── it should revert with InvalidConfig
+├── when min term and min rate at bounds
+│  └── it should deploy
 └── when config consistent
    └── it should set the immutables

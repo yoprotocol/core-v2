@@ -5,6 +5,7 @@ import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
 import { Id, MarketParams } from "src/interfaces/IMorpho.sol";
 import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
 import { Offer } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
+import { IdLib } from "src/vendor/morpho-midnight/libraries/IdLib.sol";
 import { HashLib } from "src/vendor/morpho-midnight/ratifiers/libraries/HashLib.sol";
 
 import { MidnightAdapter_Integration_Concrete_Test } from "../MidnightAdapter.t.sol";
@@ -16,6 +17,8 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
     uint256 internal constant TICK_ABOVE_MIN_RATE_FROM_START = 5200;
     /// @dev A price of exactly 1: 0% per year.
     uint256 internal constant TICK_PAR = 6744;
+    /// @dev `HashLib.hashOffer` of the all-zero offer: the Midnight SDK's padding leaf.
+    bytes32 internal constant EMPTY_OFFER_HASH = 0x59931827d7e4bea2472434c9cefa6baeb450425181a8e4bc73ebe59f9bcf248e;
 
     function _expectRatifyRevert(Offer memory offer, bytes memory reason) internal {
         vm.prank(users.vault);
@@ -210,13 +213,51 @@ contract Ratify_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         assertTrue(mockRatifier.isRootRatified(users.vault, root), "ratified");
     }
 
+    function test_WhenPaddedWithEmptyOffers() external {
+        // Two offers and the SDK's two padding forms: group 0, and the default group of the empty offer.
+        Offer[] memory offers = new Offer[](4);
+        offers[0] = _offer();
+        offers[1] = _offer();
+        offers[1].tick = TICK + 4;
+        offers[3].group = keccak256(abi.encode(EMPTY_OFFER_HASH));
+        bytes32 h2 = HashLib.hashOffer(offers[2]);
+        assertEq(h2, EMPTY_OFFER_HASH, "empty offer hash");
+        bytes32 expectedRoot = keccak256(
+            abi.encode(
+                keccak256(abi.encode(HashLib.hashOffer(offers[0]), HashLib.hashOffer(offers[1]))),
+                keccak256(abi.encode(h2, HashLib.hashOffer(offers[3])))
+            )
+        );
+        Id marketId = Id.wrap(IdLib.toId(offers[0].market));
+
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.MidnightRootSet(users.vault, expectedRoot, true, 4);
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.MidnightOfferRatified(users.vault, expectedRoot, marketId, 0);
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.MidnightOfferRatified(users.vault, expectedRoot, marketId, 1);
+
+        vm.recordLogs();
+        vm.prank(users.vault);
+        bytes32 root = midnightAdapter.ratify(offers);
+
+        assertEq(root, expectedRoot, "root");
+        assertTrue(mockRatifier.isRootRatified(users.vault, root), "ratified");
+        assertEq(vm.getRecordedLogs().length, 3, "no event for padding");
+    }
+
     function test_WhenOfferMaturityEqualsAllowlistedFamilyMaturity() external {
         Offer[] memory offers = _offers(_offer(), 2);
         offers[1].tick = TICK + 4;
         bytes32 expectedRoot = keccak256(abi.encode(HashLib.hashOffer(offers[0]), HashLib.hashOffer(offers[1])));
+        Id marketId = Id.wrap(IdLib.toId(offers[0].market));
 
         vm.expectEmit(address(midnightAdapter));
         emit YoMidnightAdapter.MidnightRootSet(users.vault, expectedRoot, true, 2);
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.MidnightOfferRatified(users.vault, expectedRoot, marketId, 0);
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.MidnightOfferRatified(users.vault, expectedRoot, marketId, 1);
 
         vm.prank(users.vault);
         bytes32 root = midnightAdapter.ratify(offers);

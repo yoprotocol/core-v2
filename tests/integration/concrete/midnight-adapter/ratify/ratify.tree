@@ -48,7 +48,12 @@ Ratify_Integration_Concrete_Test
          │  └── it should ratify the root
          ├── when start after now
          │  └── it should measure the rate from start
+         ├── when padded with empty offers
+         │  ├── it should skip the checks of the padding leaves
+         │  ├── it should ratify the root of all leaves
+         │  └── it should emit MidnightOfferRatified for the offers only
          └── when offer maturity equals allowlisted family maturity
             ├── it should ratify the Merkle root of the offers for the vault
             ├── it should return the root
-            └── it should emit MidnightRootSet
+            ├── it should emit MidnightRootSet
+            └── it should emit MidnightOfferRatified for each offer

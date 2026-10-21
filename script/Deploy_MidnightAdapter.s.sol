@@ -45,14 +45,14 @@ import { ChainId } from "./ChainId.sol";
 ///           - YO_REGISTRY:              live YoRegistry proxy (adapter `rescue` auth).
 ///           - MORPHO_MARKET_REGISTRY:   live YoMorphoMarketRegistry (funding markets and market families).
 ///           - MIDNIGHT_MIN_RATE:        minimum offer rate net of fees, simple interest, WAD per second,
-///                                       as Midnight's `continuousFee`; nonzero. For example, 3% per
+///                                       as Midnight's `continuousFee`; 0.5% to 20% per year. For example, 3% per
 ///                                       year is `0.03e18 / 365 days` = 951293759.
 ///         Optional env vars:
 ///           - MIDNIGHT_REGISTRY:               live YoMidnightRegistry to reuse. When not set, the
 ///                                              script deploys one owned by YO_OWNER (then required).
 ///           - MIDNIGHT_MAX_TIME_TO_MATURITY:   seconds; default 60 days.
 ///           - MIDNIGHT_MIN_TERM:               seconds from the earliest take to maturity; default
-///                                              1 day. Nonzero, at most the max time to maturity.
+///                                              1 day. At least 1 hour, at most the max time to maturity.
 ///           - MIDNIGHT_MAX_CONTINUOUS_FEE_CAP: WAD per second, as Midnight's `continuousFee`; default 0.
 ///                                              Midnight's maximum is `0.01e18 / 365 days` (1% per year).
 ///           - ETH_FROM, MNEMONIC:              broadcaster key (see {BaseScript}).

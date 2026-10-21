@@ -75,6 +75,8 @@ contract DefundCallback_Integration_Concrete_Test is MidnightAdapter_Integration
         uint256 vaultBefore = usdc.balanceOf(users.vault);
 
         vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.DeployedAssetsUpdated(users.vault, FUND_AMOUNT - part);
+        vm.expectEmit(address(midnightAdapter));
         emit YoMidnightAdapter.MidnightCallbackAction(
             users.vault,
             callback,

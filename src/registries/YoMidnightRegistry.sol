@@ -18,6 +18,12 @@ contract YoMidnightRegistry is Ownable2Step, IYoMidnightRegistry {
         }
     }
 
+    /// @notice Disabled: without an owner, no cap can change, also not to 0 to stop new funding. Ownership can
+    ///         still be transferred.
+    function renounceOwnership() public pure override {
+        revert RenounceDisabled();
+    }
+
     /// @inheritdoc IYoMidnightRegistry
     function setCap(address vault, uint256 assets) external onlyOwner {
         if (vault == address(0)) {

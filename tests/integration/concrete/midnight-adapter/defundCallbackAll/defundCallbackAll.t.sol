@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
+import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
 import { Id } from "src/interfaces/IMorpho.sol";
 import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
 
@@ -42,6 +43,9 @@ contract DefundCallbackAll_Integration_Concrete_Test is MidnightAdapter_Integrat
     function test_GivenCallbackHasSupplyPosition() external {
         _fundCallback(FUND_AMOUNT);
         uint256 vaultBefore = usdc.balanceOf(users.vault);
+
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.DeployedAssetsUpdated(users.vault, 0);
 
         vm.prank(users.vault);
         (uint256 assetsWithdrawn, uint256 sharesBurned) = midnightAdapter.defundCallbackAll(callback, fundingId);

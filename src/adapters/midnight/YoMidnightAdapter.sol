@@ -55,7 +55,22 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     /// @notice Emitted when the vault ratifies (`offerCount > 0`) or revokes (`offerCount == 0`) a root.
     event MidnightRootSet(address indexed vault, bytes32 indexed root, bool ratified, uint256 offerCount);
 
+    /// @notice Emitted for each offer of a ratified root, padding excluded. `index` is the leaf index.
+    event MidnightOfferRatified(address indexed vault, bytes32 indexed root, Id indexed marketId, uint256 index);
+
+    /// @notice Emitted when the vault redeems `units` of its credit in Midnight market `marketId`.
+    event MidnightRedeemed(address indexed vault, Id indexed marketId, uint256 units);
+
+    /// @notice Emitted when `deployedAssets[vault]` changes.
+    event DeployedAssetsUpdated(address indexed vault, uint256 assets);
+
     uint256 internal constant WAD = 1e18;
+    /// @notice Lowest `minTerm`. Near 0, a quote close to maturity is at about par.
+    uint256 public constant MIN_TERM_LOWER_BOUND = 1 hours;
+    /// @notice Lowest `minRate`: 0.5% per year. Near 0, quotes at about 0% pass.
+    uint256 public constant MIN_RATE_LOWER_BOUND = 0.005e18 / uint256(365 days);
+    /// @notice Highest `minRate`: 20% per year.
+    uint256 public constant MIN_RATE_UPPER_BOUND = 0.2e18 / uint256(365 days);
 
     IMorpho public immutable morpho;
     IMidnight public immutable midnight;
@@ -91,8 +106,9 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         YoAdapterBase(_yoRegistry)
     {
         if (
-            address(_registry) == address(0) || address(_midnightRegistry) == address(0) || _minTerm == 0
-                || _minTerm > _maxTimeToMaturity || _minRate == 0 || _ratifier.MIDNIGHT() != address(_midnight)
+            address(_registry) == address(0) || address(_midnightRegistry) == address(0)
+                || _minTerm < MIN_TERM_LOWER_BOUND || _minTerm > _maxTimeToMaturity || _minRate < MIN_RATE_LOWER_BOUND
+                || _minRate > MIN_RATE_UPPER_BOUND || _ratifier.MIDNIGHT() != address(_midnight)
                 || _callbackFactory.MIDNIGHT() != address(_midnight) || _callbackFactory.BLUE() != address(_morpho)
         ) {
             revert InvalidConfig();
@@ -215,15 +231,16 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IYoMidnightAdapter
-    /// @dev Offers are the leaves in order. Pad to a power of two by repeating the previous offer, which is not
-    ///      checked again.
+    /// @dev Offers are the leaves in order, padded to a power of two with Morpho's empty offer, as the Midnight SDK
+    ///      pads. A leaf with `maker == address(0)` is padding and is not checked: it cannot fill, because the
+    ///      ratifier and Midnight look up its root and authorization under `address(0)`.
     function ratify(Offer[] calldata offers) external nonReentrant returns (bytes32 root) {
         address vault = msg.sender;
         uint256 count = offers.length;
         bytes32[] memory leaves = new bytes32[](count);
         for (uint256 i = 0; i < count; ++i) {
             leaves[i] = HashLib.hashOffer(offers[i]);
-            if (i > 0 && leaves[i] == leaves[i - 1]) {
+            if (offers[i].maker == address(0)) {
                 continue;
             }
             _validateOffer(vault, offers[i], i);
@@ -234,6 +251,11 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         ratifier.setIsRootRatified(vault, root, true);
 
         emit MidnightRootSet(vault, root, true, count);
+        for (uint256 i = 0; i < count; ++i) {
+            if (offers[i].maker != address(0)) {
+                emit MidnightOfferRatified(vault, root, Id.wrap(IdLib.toId(offers[i].market)), i);
+            }
+        }
     }
 
     /// @inheritdoc IYoMidnightAdapter
@@ -257,6 +279,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
         _releaseExposure(msg.sender, market.loanToken, units);
 
         _emitAction(address(midnight), market.loanToken, AdapterDirection.Withdraw, units);
+        emit MidnightRedeemed(msg.sender, Id.wrap(IdLib.toId(market)), units);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -370,6 +393,7 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
             revert ExposureCapExceeded(deployed, cap);
         }
         deployedAssets[vault] = deployed;
+        emit DeployedAssetsUpdated(vault, deployed);
     }
 
     /// @dev Ignores other tokens: anyone can supply them to a callback.
@@ -378,7 +402,9 @@ contract YoMidnightAdapter is YoAdapterBase, IYoMidnightAdapter {
             return;
         }
         uint256 deployed = deployedAssets[vault];
-        deployedAssets[vault] = assets < deployed ? deployed - assets : 0;
+        deployed = assets < deployed ? deployed - assets : 0;
+        deployedAssets[vault] = deployed;
+        emit DeployedAssetsUpdated(vault, deployed);
     }
 
     function _isVaultAsset(address vault, address token) internal view returns (bool) {

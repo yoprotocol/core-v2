@@ -13,4 +13,6 @@ Redeem_Integration_Concrete_Test
          ├── it should burn vault credit
          ├── it should send loan token to vault
          ├── it should subtract units from deployedAssets
-         └── it should emit AdapterAction
+         ├── it should emit DeployedAssetsUpdated
+         ├── it should emit AdapterAction
+         └── it should emit MidnightRedeemed

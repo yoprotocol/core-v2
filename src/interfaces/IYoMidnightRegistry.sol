@@ -6,6 +6,7 @@ interface IYoMidnightRegistry {
     event CapSet(address indexed vault, uint256 assets);
 
     error ZeroAddress();
+    error RenounceDisabled();
 
     /// @notice Set the cap of `vault`, in the vault's asset. 0 blocks new funding.
     function setCap(address vault, uint256 assets) external;

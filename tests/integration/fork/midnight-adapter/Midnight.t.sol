@@ -211,6 +211,35 @@ abstract contract MidnightFork_Test is Fork_Test {
         );
     }
 
+    function testFork_Midnight_RatifyAcceptsSdkPadding() external {
+        _opManage(address(adapter), abi.encodeCall(YoMidnightAdapter.fundCallback, (callback, fundingId, FUND_AMOUNT)));
+
+        // One offer and the Midnight SDK's padding leaf: the all-zero offer.
+        Offer[] memory offers = new Offer[](2);
+        offers[0] = _offer(TICK);
+        bytes memory ret = _opManage(address(adapter), abi.encodeCall(YoMidnightAdapter.ratify, (offers)));
+        bytes32 root = abi.decode(ret, (bytes32));
+
+        bytes32 leaf0 = HashLib.hashOffer(offers[0]);
+        bytes32 padding = HashLib.hashOffer(offers[1]);
+        assertEq(ratifier.isRatified(offers[0], _proof(root, 0, padding), borrower), CALLBACK_SUCCESS, "offer");
+
+        Market memory market = _market();
+        deal(CBBTC, borrower, 1e8);
+        vm.startPrank(borrower);
+        IERC20(CBBTC).approve(address(midnight), 1e8);
+        midnight.supplyCollateral(market, 0, 1e8, borrower);
+
+        // The padding leaf is in the root, but Midnight rejects it.
+        vm.expectRevert();
+        midnight.take(offers[1], _proof(root, 1, leaf0), TAKE_UNITS, borrower, borrower, address(0), "");
+
+        midnight.take(offers[0], _proof(root, 0, padding), TAKE_UNITS, borrower, borrower, address(0), "");
+        vm.stopPrank();
+
+        assertEq(midnight.credit(marketId, address(yoVault)), TAKE_UNITS, "vault credit");
+    }
+
     function testFork_Midnight_UnratifiedRootCannotBeTaken() external {
         _opManage(address(adapter), abi.encodeCall(YoMidnightAdapter.fundCallback, (callback, fundingId, FUND_AMOUNT)));
         Offer[] memory offers = new Offer[](1);

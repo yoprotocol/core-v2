@@ -31,4 +31,5 @@ FundCallback_Integration_Concrete_Test
                   ├── it should credit supply shares to the callback
                   ├── it should add assets to deployedAssets
                   ├── it should leave zero loan token and allowance in adapter
+                  ├── it should emit DeployedAssetsUpdated
                   └── it should emit MidnightCallbackAction

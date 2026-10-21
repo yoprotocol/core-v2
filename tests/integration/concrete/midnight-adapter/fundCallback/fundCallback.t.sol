@@ -96,6 +96,8 @@ contract FundCallback_Integration_Concrete_Test is MidnightAdapter_Integration_C
         uint256 vaultBefore = usdc.balanceOf(users.vault);
 
         vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.DeployedAssetsUpdated(users.vault, FUND_AMOUNT);
+        vm.expectEmit(address(midnightAdapter));
         emit YoMidnightAdapter.MidnightCallbackAction(
             users.vault,
             callback,

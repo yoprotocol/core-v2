@@ -67,21 +67,10 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
         );
     }
 
-    function test_WhenMinTermZero() external {
+    function test_WhenMinTermBelowLowerBound() external {
+        uint256 minTerm = midnightAdapter.MIN_TERM_LOWER_BOUND() - 1;
         vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
-        new YoMidnightAdapter(
-            IMorpho(address(mockMorpho)),
-            IMidnight(address(mockMidnight)),
-            ISetterRatifier(address(mockRatifier)),
-            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
-            marketRegistry,
-            midnightRegistry,
-            MAX_TIME_TO_MATURITY,
-            0,
-            MAX_CONTINUOUS_FEE_CAP,
-            MIN_RATE,
-            yoRegistry
-        );
+        _deployWithFloors(minTerm, MIN_RATE);
     }
 
     function test_WhenMinTermAboveMaxTimeToMaturity() external {
@@ -101,21 +90,16 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
         );
     }
 
-    function test_WhenMinRateZero() external {
+    function test_WhenMinRateBelowLowerBound() external {
+        uint256 minRate = midnightAdapter.MIN_RATE_LOWER_BOUND() - 1;
         vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
-        new YoMidnightAdapter(
-            IMorpho(address(mockMorpho)),
-            IMidnight(address(mockMidnight)),
-            ISetterRatifier(address(mockRatifier)),
-            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
-            marketRegistry,
-            midnightRegistry,
-            MAX_TIME_TO_MATURITY,
-            MIN_TERM,
-            MAX_CONTINUOUS_FEE_CAP,
-            0,
-            yoRegistry
-        );
+        _deployWithFloors(MIN_TERM, minRate);
+    }
+
+    function test_WhenMinRateAboveUpperBound() external {
+        uint256 minRate = midnightAdapter.MIN_RATE_UPPER_BOUND() + 1;
+        vm.expectRevert(IYoMidnightAdapter.InvalidConfig.selector);
+        _deployWithFloors(MIN_TERM, minRate);
     }
 
     function test_WhenRatifierPointsToAnotherMidnight() external {
@@ -153,6 +137,15 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
         );
     }
 
+    function test_WhenMinTermAndMinRateAtBounds() external {
+        uint256 minTerm = midnightAdapter.MIN_TERM_LOWER_BOUND();
+        uint256 lowRate = midnightAdapter.MIN_RATE_LOWER_BOUND();
+        uint256 highRate = midnightAdapter.MIN_RATE_UPPER_BOUND();
+
+        assertEq(_deployWithFloors(minTerm, lowRate).minRate(), lowRate, "lower bound");
+        assertEq(_deployWithFloors(minTerm, highRate).minRate(), highRate, "upper bound");
+    }
+
     function test_WhenConfigConsistent() external view {
         assertEq(address(midnightAdapter.morpho()), address(mockMorpho), "morpho");
         assertEq(address(midnightAdapter.midnight()), address(mockMidnight), "midnight");
@@ -165,5 +158,21 @@ contract Constructor_Integration_Concrete_Test is MidnightAdapter_Integration_Co
         assertEq(midnightAdapter.maxContinuousFeeCap(), MAX_CONTINUOUS_FEE_CAP, "maxContinuousFeeCap");
         assertEq(midnightAdapter.minRate(), MIN_RATE, "minRate");
         assertEq(address(midnightAdapter.yoRegistry()), address(yoRegistry), "yoRegistry");
+    }
+
+    function _deployWithFloors(uint256 minTerm, uint256 minRate) internal returns (YoMidnightAdapter) {
+        return new YoMidnightAdapter(
+            IMorpho(address(mockMorpho)),
+            IMidnight(address(mockMidnight)),
+            ISetterRatifier(address(mockRatifier)),
+            IBlueBuyCallbackFactory(address(mockCallbackFactory)),
+            marketRegistry,
+            midnightRegistry,
+            MAX_TIME_TO_MATURITY,
+            minTerm,
+            MAX_CONTINUOUS_FEE_CAP,
+            minRate,
+            yoRegistry
+        );
     }
 }

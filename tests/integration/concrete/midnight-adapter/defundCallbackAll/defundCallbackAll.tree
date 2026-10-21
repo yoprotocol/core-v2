@@ -12,4 +12,5 @@ DefundCallbackAll_Integration_Concrete_Test
       └── given callback has supply position
          ├── it should withdraw all callback shares
          ├── it should send assets to vault
-         └── it should subtract assets from deployedAssets
+         ├── it should subtract assets from deployedAssets
+         └── it should emit DeployedAssetsUpdated

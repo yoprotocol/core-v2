@@ -4,8 +4,11 @@ pragma solidity 0.8.34;
 import { stdError } from "forge-std/src/StdError.sol";
 
 import { YoAdapterBase } from "src/adapters/base/YoAdapterBase.sol";
+import { YoMidnightAdapter } from "src/adapters/midnight/YoMidnightAdapter.sol";
+import { Id } from "src/interfaces/IMorpho.sol";
 import { IYoMidnightAdapter } from "src/interfaces/IYoMidnightAdapter.sol";
 import { Market } from "src/vendor/morpho-midnight/interfaces/IMidnight.sol";
+import { IdLib } from "src/vendor/morpho-midnight/libraries/IdLib.sol";
 
 import { MidnightAdapter_Integration_Concrete_Test } from "../MidnightAdapter.t.sol";
 
@@ -52,7 +55,10 @@ contract Redeem_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
         _fundCallback(FUND_AMOUNT);
         vm.startPrank(users.vault);
         uint256 vaultBefore = usdc.balanceOf(users.vault);
+        Market memory market = _market(block.timestamp + TERM);
 
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.DeployedAssetsUpdated(users.vault, FUND_AMOUNT - CREDIT);
         vm.expectEmit(address(midnightAdapter));
         emit YoAdapterBase.AdapterAction(
             users.vault,
@@ -61,8 +67,10 @@ contract Redeem_Integration_Concrete_Test is MidnightAdapter_Integration_Concret
             YoAdapterBase.AdapterDirection.Withdraw,
             CREDIT
         );
+        vm.expectEmit(address(midnightAdapter));
+        emit YoMidnightAdapter.MidnightRedeemed(users.vault, Id.wrap(IdLib.toId(market)), CREDIT);
 
-        midnightAdapter.redeem(_market(block.timestamp + TERM), CREDIT);
+        midnightAdapter.redeem(market, CREDIT);
 
         assertEq(mockMidnight.credit(users.vault, address(usdc)), 0, "credit");
         assertEq(usdc.balanceOf(users.vault), vaultBefore + CREDIT, "vault USDC delta");
