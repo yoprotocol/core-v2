@@ -1,0 +1,6 @@
+Unratify_Integration_Concrete_Test
+├── given adapter not authorized on Midnight
+│  └── it should revert in the ratifier
+└── given adapter authorized on Midnight
+   ├── it should clear the vault ratification of the root
+   └── it should emit MidnightRootSet
