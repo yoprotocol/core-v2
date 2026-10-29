@@ -68,7 +68,7 @@ contract YoBridgeRouteRegistry is Ownable2Step, IYoBridgeRouteRegistry {
     /// @dev Hash of a route tuple, used as the `_routes` key. `abi.encode` (not `encodePacked`)
     ///      guarantees an unambiguous, collision-free encoding of the six fields. `outputToken` pins
     ///      the destination token an adapter presents (Across `outputToken`, Mayan order `tokenOut`);
-    ///      adapters that do not pin it (CCIP/CCTP) pass `bytes32(0)`.
+    ///      adapters that do not pin it (CCIP/CCTP/CCTPx) pass `bytes32(0)`.
     function _routeId(
         address vault,
         address adapter,

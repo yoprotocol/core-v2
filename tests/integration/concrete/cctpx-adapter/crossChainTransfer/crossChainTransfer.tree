@@ -1,0 +1,57 @@
+CrossChainTransfer_CctpxAdapter_Integration_Concrete_Test
+├── when amount zero
+│  └── it should revert with InvalidAmount
+└── when amount non zero
+   ├── when recipient zero
+   │  └── it should revert with InvalidRecipient
+   └── when recipient non zero
+      ├── when minFinalityThreshold not fast or standard
+      │  └── it should revert with InvalidFinalityThreshold
+      └── when minFinalityThreshold fast or standard
+         ├── when msg value above maxNativeFee
+         │  └── it should revert with NativeFeeTooHigh
+         └── when msg value at most maxNativeFee
+            ├── when caller is not the route vault
+            │  └── it should revert with RouteNotAllowed
+            ├── when route is for another adapter
+            │  └── it should revert with RouteNotAllowed
+            ├── when route is for another token
+            │  └── it should revert with RouteNotAllowed
+            ├── when destination domain is not the route domain
+            │  └── it should revert with RouteNotAllowed
+            ├── when recipient is not the route recipient
+            │  └── it should revert with RouteNotAllowed
+            ├── when route pins an output token
+            │  └── it should revert with RouteNotAllowed
+            └── when route allowed
+               ├── when msg value above quote total
+               │  └── it should revert with IncorrectNativeFee
+               ├── when msg value below quote total
+               │  ├── given service cannot cover the shortfall
+               │  │  └── it should revert in the service
+               │  └── given service covers the shortfall from its own balance
+               │     └── it should revert with IncorrectNativeFee
+               └── when msg value equals quote total
+                  ├── when reentered through token transfer hook
+                  │  └── it should revert with ReentrancyGuardReentrantCall
+                  ├── when msg value equals maxNativeFee
+                  │  └── it should transfer
+                  ├── given service holds ETH from earlier callers
+                  │  └── it should transfer and leave the service balance unchanged
+                  ├── given token manager pulls less than approved
+                  │  ├── it should reset the token manager allowance to zero
+                  │  └── it should leave the unpulled tokens in the adapter for rescue
+                  └── when not reentered
+                     ├── it should pull amount from the vault
+                     ├── it should credit amount to the token manager
+                     ├── it should forward tokenId amount and destination domain
+                     ├── it should forward the recipient as its raw 20 bytes
+                     ├── it should forward a zero destination caller
+                     ├── it should forward minFinalityThreshold
+                     ├── it should forward the signed quote with the vault as refund address
+                     ├── it should not request a destination hook
+                     ├── it should pay msg value as the fee
+                     ├── it should reset the token manager allowance to zero
+                     ├── it should leave zero token and zero ETH in the adapter
+                     ├── it should emit AdapterAction
+                     └── it should return amount
