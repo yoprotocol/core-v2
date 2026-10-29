@@ -328,6 +328,45 @@ abstract contract BaseScript is Script {
         return 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d;
     }
 
+    /// @notice Circle CCTPx ("CCTP for non-USDC") `CrossChainTokenService` proxy. Same address on every
+    ///         chain pinned here; it rides on the CCTP V2 `MessageTransmitterV2`.
+    /// @dev    Source: https://developers.circle.com/cctp/expanded-assets/references/contract-addresses
+    ///         (verified on-chain). Overridable via the `CCTPX_TOKEN_SERVICE` env var.
+    function getCctpxTokenService() public view returns (address) {
+        address envOverride = vm.envOr({ name: "CCTPX_TOKEN_SERVICE", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        if (chainId == ChainId.ETHEREUM || chainId == ChainId.BASE) {
+            return 0x431871229103b780868f8C6BB820cd16ECf942BC;
+        }
+        revert ChainNotSupported("CCTPx CrossChainTokenService", chainId);
+    }
+
+    /// @notice CCTPx cross-chain `tokenId` of EURC. CCTPx addresses a token by this id, which is the same
+    ///         on every chain; the service resolves it to the local EURC ({getEURC}).
+    /// @dev    Source: Iris `GET /v2/cctpx/tokens`. Overridable via the `CCTPX_EURC_TOKEN_ID` env var.
+    function getCctpxEurcTokenId() public view returns (bytes32) {
+        bytes32 envOverride = vm.envOr({ name: "CCTPX_EURC_TOKEN_ID", defaultValue: bytes32(0) });
+        if (envOverride != bytes32(0)) {
+            return envOverride;
+        }
+        if (chainId == ChainId.ETHEREUM || chainId == ChainId.BASE) {
+            return 0x6ca9e29fa53becc29becaf4a90b9ca7a995ad4d2234880da13ca38c657fb241c;
+        }
+        revert ChainNotSupported("CCTPx EURC tokenId", chainId);
+    }
+
+    /// @notice Maximum CCTPx fee per transfer (the adapter's `maxNativeFee`), in wei of the native gas asset.
+    /// @dev    A signed quote cannot be overpaid: the adapter requires `msg.value` to equal the quote's total.
+    ///         The cap bounds the fee the operator chooses. A standard transfer pays the `PROTOCOL` fee only,
+    ///         about 1.11e14 wei (0.00011 ETH). A fast transfer adds a `PRE_FINALITY` fee that scales with the
+    ///         amount: at the 2026-10-29 rate of about 4.96e10 wei per EURC, a fast transfer of 200k EURC costs
+    ///         about 0.0100 ETH, and the cap is reached at about 401k EURC. The rate moves with ETH/EUR.
+    function getCctpxMaxNativeFee() public pure returns (uint256) {
+        return 0.02 ether;
+    }
+
     /// @notice Mayan Forwarder. Deployed at the same address on every supported EVM chain.
     /// @dev    Source: https://docs.mayan.finance/integration/forwarder-contract. Overridable via the
     ///         `MAYAN_FORWARDER` env var.
@@ -385,5 +424,25 @@ abstract contract BaseScript is Script {
             return 0xb88339CB7199b77E23DB6E890353E22632Ba630f;
         }
         return address(0);
+    }
+
+    /// @notice Circle-issued EURC on this chain. Overridable via the `EURC` env var.
+    function getEURC() public view returns (address) {
+        address envOverride = vm.envOr({ name: "EURC", defaultValue: address(0) });
+        if (envOverride != address(0)) {
+            return envOverride;
+        }
+        return getEURCOn(chainId);
+    }
+
+    /// @notice Circle-issued EURC on `chain`, with no env override. For checks against another chain.
+    function getEURCOn(uint256 chain) public pure returns (address) {
+        if (chain == ChainId.ETHEREUM) {
+            return 0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c;
+        }
+        if (chain == ChainId.BASE) {
+            return 0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42;
+        }
+        revert ChainNotSupported("EURC", chain);
     }
 }
