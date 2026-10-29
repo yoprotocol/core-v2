@@ -183,6 +183,7 @@ abstract contract MidnightSafeBatch is BaseScript {
 
     /// @dev Safe Transaction Builder format, as {Configure_Pool} writes it, with one transaction per call.
     function _writeBatch(string memory path, string memory name, address safe, Call[] memory calls) internal {
+        // solhint-disable quotes
         string memory transactions;
         for (uint256 i = 0; i < calls.length; ++i) {
             transactions = string.concat(
@@ -210,6 +211,7 @@ abstract contract MidnightSafeBatch is BaseScript {
             transactions,
             "]}"
         );
+        // solhint-enable quotes
         vm.createDir("script/safe-batches", true);
         vm.writeFile(path, json);
         console2.log("Wrote %s (%s transactions)", path, calls.length);

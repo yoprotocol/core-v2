@@ -18,7 +18,7 @@ export FOUNDRY_FUZZ_SEED := `echo $(($(date +%s) / 604800))`
 
 GLOBS_CLEAN := "artifacts artifacts-* broadcast cache coverage docs out out-* typechain-types lcov.info"
 GLOBS_PRETTIER := "\"**/*.{json,svg,yaml,yml}\""
-GLOBS_SOLIDITY := "{scripts,src,tests}/**/*.sol"
+GLOBS_SOLIDITY := "{script,src,tests}/**/*.sol"
 
 # ---------------------------------------------------------------------------- #
 #                                    SCRIPTS                                   #
