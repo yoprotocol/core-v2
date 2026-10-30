@@ -194,6 +194,7 @@ contract Configure_Pool is BaseScript {
                                       PREFLIGHT
     //////////////////////////////////////////////////////////////////////////*/
 
+    // solhint-disable-next-line code-complexity
     function _preflight(Inputs memory inputs) private view {
         _requireTimelockOwned(inputs, "YoPoolRegistry", address(inputs.poolRegistry));
 
@@ -328,6 +329,7 @@ contract Configure_Pool is BaseScript {
     /// @dev Safe Transaction Builder v1.0 format, matching the hand-authored batches already in
     ///      `script/safe-batches/`. One raw-calldata transaction per file.
     function _writeBatch(string memory path, string memory description, address to, bytes memory data) private {
+        // solhint-disable quotes
         string memory json = string.concat(
             '{"version":"1.0","chainId":"',
             vm.toString(chainId),
@@ -345,6 +347,7 @@ contract Configure_Pool is BaseScript {
             vm.toString(data),
             '","contractMethod":null,"contractInputsValues":null}]}'
         );
+        // solhint-enable quotes
         vm.writeFile(path, json);
         console2.log("Wrote:", path);
     }
