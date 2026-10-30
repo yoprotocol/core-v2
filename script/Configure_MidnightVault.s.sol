@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.34 <0.9.0;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { YoMidnightAdapter } from "../src/adapters/midnight/YoMidnightAdapter.sol";
 import { IBlueBuyCallback } from "../src/interfaces/external/IBlueBuyCallback.sol";
 import { Id } from "../src/interfaces/IMorpho.sol";
@@ -112,8 +114,8 @@ contract Configure_MidnightVault is MidnightSafeBatch {
         inputs.cap = vm.envUint("MIDNIGHT_CAP");
         inputs.approvalCap = vm.envOr({ name: "MIDNIGHT_APPROVAL_CAP", defaultValue: inputs.cap });
         inputs.callbackSalt = vm.envOr({ name: "CALLBACK_SALT", defaultValue: bytes32(0) });
-        inputs.operatorRole = uint8(vm.envOr({ name: "OPERATOR_ROLE", defaultValue: uint256(12) }));
-        inputs.tempRole = uint8(vm.envOr({ name: "TEMP_ROLE", defaultValue: uint256(250) }));
+        inputs.operatorRole = SafeCast.toUint8(vm.envOr({ name: "OPERATOR_ROLE", defaultValue: uint256(12) }));
+        inputs.tempRole = SafeCast.toUint8(vm.envOr({ name: "TEMP_ROLE", defaultValue: uint256(250) }));
 
         bytes32[] memory families;
         bytes32[] memory fundingMarkets;
