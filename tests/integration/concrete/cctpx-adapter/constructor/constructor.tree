@@ -1,0 +1,10 @@
+Constructor_CctpxAdapter_Integration_Concrete_Test
+├── when yoRegistry zero
+│  └── it should revert with ZeroRegistry
+└── when yoRegistry non zero
+   ├── when tokenId not registered
+   │  └── it should revert with TokenNotRegistered
+   ├── when token is not the registered token
+   │  └── it should revert with TokenMismatch
+   └── when token is the registered token
+      └── it should set the immutables

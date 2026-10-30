@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 /// @notice Per-vault allowlist of cross-chain destinations reachable through the YO bridge adapters
-///         (`YoAcrossAdapter`, `YoCcipAdapter`, `YoCctpAdapter`).
+///         (`YoAcrossAdapter`, `YoCcipAdapter`, `YoCctpAdapter`, `YoCctpxAdapter`, `YoMayanAdapter`).
 /// @dev    Bridges are the only adapters that move value OFF the current chain to a recipient
 ///         elsewhere, so the usual "funds return to the vault" invariant does not apply. This
 ///         registry is the on-chain destination floor: an adapter may only let `vault` send `token`
@@ -15,14 +15,14 @@ pragma solidity 0.8.34;
 ///                               reused as a CCTP route for domain 8453.
 ///           - `token`         — the asset leaving the chain (e.g. USDC).
 ///           - `destinationId` — the bridge's native destination identifier, widened to `uint256`
-///                               (Across chainId, CCIP chain selector, CCTP domain).
+///                               (Across chainId, CCIP chain selector, CCTP / CCTPx domain).
 ///           - `recipient`     — the destination recipient, widened to `bytes32` (an EVM address is
 ///                               left-padded to 32 bytes).
 ///           - `outputToken`   — the destination-chain token the adapter presents, widened to
 ///                               `bytes32`. Adapters where the operator names the delivered token
 ///                               (Across `outputToken`, Mayan order `tokenOut`) pass it here so the
 ///                               multisig pins the destination asset's identity; adapters where the
-///                               protocol fixes the output (CCIP, CCTP) pass `bytes32(0)`.
+///                               protocol fixes the output (CCIP, CCTP, CCTPx) pass `bytes32(0)`.
 interface IYoBridgeRouteRegistry {
     event RouteSet(
         address indexed vault,

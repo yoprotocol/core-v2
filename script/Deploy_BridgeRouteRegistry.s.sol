@@ -8,8 +8,9 @@ import { YoBridgeRouteRegistry } from "../src/registries/YoBridgeRouteRegistry.s
 import { BaseScript } from "./Base.s.sol";
 
 /// @notice Deploys the shared {YoBridgeRouteRegistry}, owned by the YO multisig. Every bridge
-///         adapter (`YoAcrossAdapter`, `YoCcipAdapter`, `YoCctpAdapter`) consults this registry for
-///         the on-chain destination floor, so it must be deployed before the adapters.
+///         adapter (`YoAcrossAdapter`, `YoCcipAdapter`, `YoCctpAdapter`, `YoCctpxAdapter`,
+///         `YoMayanAdapter`) consults this registry for the on-chain destination floor, so it must be
+///         deployed before the adapters.
 ///
 ///         Post-deploy operational steps (multisig, per vault + bridge):
 ///           - `routeRegistry.setRoute(vault, adapter, token, destinationId, recipient, true)` for
